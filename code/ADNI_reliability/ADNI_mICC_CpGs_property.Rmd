@@ -1,0 +1,555 @@
+---
+title: "Critical evaluation of the reliability of DNA methylation probes on the Illumina MethylationEPIC BeadChip microarrays for dementia research"
+subtitle: "ADNI modified ICC and property study"
+author: "Wei Zhang, Lily Wang"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    highlight: pygments
+    theme: yeti
+    toc: true
+    number_sections: true
+    df_print: paged
+    code_download: false
+    toc_float:
+      collapsed: yes
+    toc_depth: 3
+    font_size: 10
+editor_options:
+  chunk_output_type: inline 
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggpubr)
+library(gmodels)
+
+dir.base <- "../../"
+dir.data.new <- file.path(dir.base, "data/ADNI")
+dir.data.new.processed <- file.path(dir.data.new, "DNA_methylation/processed")
+dir.reliable.score <- file.path(dir.base, "analysis-results/reliable_score_different_plate")
+dir.plot <- file.path(dir.base, "analysis-results/plots")
+
+dir.lissette <- file.path(dir.base,  "Lissette")
+for(p in grep("dir",ls(),value = T)) dir.create(get(p),recursive = TRUE,showWarnings = FALSE)
+```
+
+# Half-width of limits of agreement (HoLA)
+
+```{r eval = T}
+# ---------------------------------------------------------------------------------------
+# Auxillary function
+# ---------------------------------------------------------------------------------------
+get_replicate.HOLA <- function(samples.id, beta,iccdat, save = F){
+  
+  barcodes <- samples.id[,c("barcodes1", "barcodes2")]
+  cpgs <- rownames(beta)
+
+  doParallel::registerDoParallel(4)
+  HOLA <- plyr::ldply(
+    cpgs,
+    .fun = function(c){
+      rating <- plyr::aaply(
+        barcodes,
+        .margins = 1, 
+        .fun = function(bar){
+          probe <- beta[c,]
+          probe[bar %>% unlist()]
+        },.expand = F
+      ) %>% as.data.frame()
+      
+      colnames(rating) <- c("Rep1", "Rep2")
+      rating$avg <- rowMeans(rating)
+      rating$diff <- rating[,1] - rating[,2]
+      mean_diff <- mean(rating$diff)
+      lower <- mean_diff - 1.96 * sd(rating$diff)
+      upper <- mean_diff + 1.96 * sd(rating$diff)
+      rating$abs_diff <- abs(rating$Rep1 - rating$Rep2)
+      rating$mean_abs_diff <- mean(rating$abs_diff)
+      rating$sample_label <- 1:nrow(barcodes)
+      rating$outlier <- factor(ifelse(rating$diff < lower|rating$diff > upper, "Yes", "No"), levels = c("No", "Yes"))
+      
+      df <- data.frame(
+         cpg = c,
+         cpg_mean_diff = mean_diff,
+         HoLA = 1.96 * sd(rating$diff),
+         lower_diff = lower,
+         upper_diff = upper,
+         mean_abs_diff = mean(rating$abs_diff)
+       )
+      df <- left_join(df, iccdat %>% filter(cpg == c))
+      
+      if(save){
+        
+        # save BA plot for the cpg
+        ggplot(rating , aes(x = avg, y = diff)) +
+          geom_point(aes(color = outlier), size=1.5) +
+          geom_text(aes(label=sample_label), data = subset(rating, diff < lower | diff > upper), color = "red", hjust = 0) +
+          scale_color_manual(values = c("black", "red")) + 
+          guides(color = "none") +
+          geom_hline(yintercept = mean_diff, color = "grey", linetype="dashed") +
+          geom_hline(yintercept = lower, color = "red", linetype="dashed") +
+          geom_hline(yintercept = upper, color = "red", linetype="dashed") +
+          labs(title = c, subtitle = paste0("ICC = ", round(df$ICC_Beta,4), 
+                         " Beta mean = ", round(df$beta.mean,4), " Beta sd = ",  
+                         round(df$beta.sd.rand, 4), " HoLA = ", round(df$HoLA, 4), "
+                         modified ICC = ICC - HoLA = ", round(df$ICC_Beta - df$HoLA,4))) +
+          ylab("Difference Between Measurements") +
+          xlab("Average Measurement") + theme_bw() +
+          annotate("text", y = mean_diff, x = Inf, label = paste0("Bias\n ", round(mean_diff,5)),hjust = 1,size = 3) + 
+          annotate("text", y = lower, x = Inf, label = paste0("Lower\n ", round(lower,5)),hjust = 1,size = 3) + 
+          annotate("text", y = upper, x = Inf, label = paste0("Upper\n", round(upper,5)),hjust = 1,size = 3)
+        
+  
+        ggsave(file.path(paste0(dir.plot, "/BA_plots_diff_plates/BA_",  c, ".pdf")),
+               width = 8, height = 6) # This directory can change to other folders
+      }
+      
+      return(df)
+    },.parallel = T
+  )
+  
+  doParallel::stopImplicitCluster()
+
+  return(HOLA)
+}
+
+summ.table <- function(df, Group, type = "ICC_Beta"){
+
+  d <- df %>% group_by(get(Group)) %>% 
+  dplyr::summarise(
+    num_of_probes = n(),
+    Mean = mean(get(type)),
+    SD = sd(get(type)),
+    Min = min(get(type)),
+    Median = median(get(type)),
+    Max = max(get(type))
+  ) 
+  colnames(d)[1] <- Group
+
+  return(d)  
+}
+```
+
+```{r message = F, eval = T}
+# Load beta and replicate samples information
+beta <- readRDS( file.path(dir.data.new.processed,"ADNI_RnBeads_and_pooBAH_filtered_beta_different_plates.RDS"))
+samples.duplicated <- readxl::read_xlsx(
+  file.path(dir.data.new.processed, "ADNI_DNA_Methylation_Sample_Duplicated_Diff_Plates.xlsx")
+)
+samples.id <- samples.duplicated %>% dplyr::select(RID_Phase_Edata, barcodes) %>% 
+  dplyr::group_by(RID_Phase_Edata) %>% 
+  dplyr::mutate(obs = dplyr::row_number()) %>% 
+  pivot_wider(names_from = "obs", 
+              values_from = "barcodes", 
+              names_prefix="barcodes")
+```
+
+```{r eval = F}
+reliable_list_with_HoLA <- list()
+n <- nrow(beta)
+seq.n <- seq(1,n, by = 10000)
+seq.n <- c(seq.n,n+1)
+reliable_df_with_HoLA <- plyr::ldply(
+  1:(length(seq.n)-1),
+  .fun = function(i){
+    reliable_list_with_HoLA[[i]] <<- get_replicate.HOLA(
+      samples.id = samples.id, 
+      beta = beta[seq.n[i]:(seq.n[i+1]-1),])
+    cat(i)
+    return(reliable_list_with_HoLA[[i]])
+  }
+)
+  
+```
+
+```{r echo = F, eval = F}
+reliable_df <- left_join(
+  reliable_df,reliable_df_with_HoLA
+)
+write_csv(
+  reliable_df,
+  file.path(dir.reliable.score, "ADNI_ICC_annotation_with_HoLA.csv")
+)
+```
+
+```{r eval = F}
+highest.icc <- reliable_df %>% slice_max(ICC_Beta, n = 5) %>% pull(cpg)
+get_replicate.HOLA(samples.id, beta[highest.icc,],iccdat = reliable_df, save = T)
+```
+
+```{r message = F}
+reliable_df <- read_csv(file.path(dir.reliable.score, "ADNI_ICC_annotation_with_HoLA.csv"))
+```
+
+## Distribution
+
+```{r}
+ggpubr::gghistogram(
+  data = reliable_df,
+  x = "HoLA",
+  xlab = "HoLA",
+  ylab = "count",
+  combine = T,
+  fill = "pink"
+)
+```
+
+
+```{r}
+ggscatter(
+  reliable_df,
+  x = "HoLA",
+  y = "ICC_Beta",
+  xlab = "HoLA",
+  ylab = "ICC",
+  size = .1,
+  cor.coef = T,
+  cor.method = "spearman",
+  cor.coef.coord = c(0.7, -0.3),
+  cor.coeff.args = list(color = "navy", digits = 3)
+)
+```
+
+## Classifiation based on ICC and HoLA
+
+```{r}
+reliable_df <- reliable_df %>% 
+  mutate(group = paste0(classification_Beta,ifelse(HoLA < 0.05, "+", "")))
+reliable_df$group <- factor(reliable_df$group, levels = 
+                              c(paste0("Excellent", c("+", "")),
+                                paste0("Good", c("+", "")),
+                                paste0("Fair", c("+", "")),
+                                paste0("Poor", c("+", ""))))
+```
+
+```{r}
+ggboxplot(
+  reliable_df,
+  x = "group",
+  y = "ICC_Beta",
+  xlab = "ICC",
+  palette = "jco",
+  fill = "classification_Beta"
+)
+```
+
+# Modified ICC
+
+```{r}
+reliable_df <- reliable_df %>% mutate(modified_ICC = ICC_Beta - HoLA,
+                                      m_ICCgroup = ifelse(
+                                        modified_ICC > 0.75, "Excellent",
+                                        ifelse(modified_ICC < 0.75&modified_ICC >0.6, "Good",
+                                               ifelse(modified_ICC < 0.6&modified_ICC >0.4, "Fair", "Poor"))
+                                      ))
+```
+
+
+```{r message = F}
+write_csv(reliable_df, file.path(dir.reliable.score, "ADNI_ICC_annotation_with_HoLA_grouped.csv"))
+```
+
+```{r}
+ICC_classification <- factor(reliable_df$classification_Beta, levels = c("Poor", "Fair", "Good", "Excellent"))
+mICC_classification <- factor(reliable_df$m_ICCgroup, levels = c("Poor", "Fair", "Good", "Excellent"))
+```
+
+```{r}
+gmodels::CrossTable(
+  ICC_classification,
+  mICC_classification,
+  prop.c = FALSE, prop.r = FALSE, prop.t = TRUE, prop.chisq = FALSE, format = "SPSS")
+```
+
+```{r}
+ICC_mat <- CrossTable(
+  ICC_classification,
+  mICC_classification,
+  prop.c = FALSE, prop.r = T, prop.t = F, prop.chisq = FALSE, format = "SAS", dnn = c("ICC", "modified ICC"))
+ICC_m <- ICC_mat$t
+for(i in c(1:4)){
+  for(j in c(1:4)){
+    
+    ICC_m[i,j] <- paste0(ICC_mat$t[i,j], " (", round(ICC_mat$prop.row[i,j], 3) * 100, "%)")
+    
+  }
+}
+ICC_m <- unclass(ICC_m)
+ICC_m <- rbind(ICC_m, colSums(ICC_mat$t))
+rownames(ICC_m)[5] <- "Column Total"
+ICC_m <- data.frame(ICC_m) %>% mutate("Row Total" =  c(rowSums(ICC_mat$t),  ICC_m[5,] %>% as.numeric() %>% sum))
+```
+
+```{r eval = F}
+writexl::write_xlsx(
+  data.frame("Group" = rownames(ICC_m), ICC_m),
+  file.path(dir.reliable.score, "Cross_table_ICC_vs_mICC.xlsx")
+)
+```
+
+
+
+## Distribution
+
+### modified ICC vs SD
+
+```{r echo = F}
+df_stat <- list()
+```
+
+```{r message = F}
+reliable_df <- read_csv(file.path(dir.reliable.score, "ADNI_ICC_annotation_with_HoLA_grouped.csv"))
+```
+
+```{r fig.width=9,fig.height=5, echo = F}
+q0 <- quantile(reliable_df$beta.sd.rand)
+q <- paste0("Q" , 1:4, ": ", 
+            sapply(1:4, function(k) paste0(round(q0[k],2), "-", round(q0[k + 1],2))))
+my_comparisons <- list( c(q[1], q[2]), c(q[2], q[3]), c(q[3], q[4]) )
+df <- reliable_df %>% 
+  dplyr::mutate(Quantile.sd = ifelse(beta.sd.rand < q0[2], q[1],
+                              ifelse(beta.sd.rand < q0[3] & beta.sd.rand >= q0[2], q[2],
+                                     ifelse(beta.sd.rand < q0[4] & beta.sd.rand >= q0[3], q[3], q[4]))),
+         Quantile.sd = factor(Quantile.sd, levels = q))
+ggboxplot(
+  df,
+  x = "Quantile.sd",
+  y = "modified_ICC",
+  ylab = "modified ICC",
+  xlab = "Quartile of probe standard deviations",
+  fill = "Quantile.sd",
+  palette = "jco",
+  outlier.shape = NA
+) + guides(fill="none")
+```
+
+```{r eval = F, echo = F}
+ggsave(
+  filename = file.path(dir.plot, "ADNI_Boxplot_modified_ICC_vs_SD.pdf"),
+  width = 8,
+  height = 4
+)
+```
+
+```{r echo = F}
+df_stat[[1]] <- df %>% group_by(Quantile.sd) %>% 
+  dplyr::summarise(
+    num_of_probes = n(),
+    Mean = mean(modified_ICC),
+    SD = sd(modified_ICC),
+    Min = min(modified_ICC),
+    Median = median(modified_ICC),
+    Max = max(modified_ICC)
+  ) 
+```
+
+### modified ICC vs mean
+
+```{r fig.width=9,fig.height=5, echo = F}
+p <- reliable_df %>% 
+  mutate(group.mean = ifelse(beta.mean < 0.2, "0 - 0.2",
+                              ifelse(beta.mean < 0.4 & beta.mean >= 0.2, "0.2 - 0.4",
+                                     ifelse(beta.mean < 0.6 & beta.mean >= 0.4, "0.4 - 0.6", 
+                                            ifelse(beta.mean < 0.8 & beta.mean >= 0.6, "0.6 - 0.8", "0.8 - 1")))),
+         group.mean = factor(group.mean, 
+                              levels = c("0 - 0.2", 
+                                         "0.2 - 0.4",
+                                         "0.4 - 0.6",
+                                         "0.6 - 0.8", 
+                                         "0.8 - 1")))
+p_sum <- p %>% dplyr::group_by(group.mean) %>% dplyr::summarise(n = dplyr::n())
+ggboxplot(
+  p,
+  x = "group.mean",
+  y = "modified_ICC",
+  ylab = "modified ICC",
+  xlab = "Average beta value of the probe",
+  fill = "group.mean",
+  palette = "jco",
+  outlier.shape = NA) + guides(fill="none")
+# ) + annotate( "text", label = paste0("n_probes: ", p_sum$n[1]), x = 1, y = 1.2, size = 4) +
+#   annotate( "text", label = paste0("n_probes: ", p_sum$n[2]), x = 2, y = 1.2, size = 4) +
+#   annotate( "text", label = paste0("n_probes: ", p_sum$n[3]), x = 3, y = 1.2, size = 4) + 
+#   annotate( "text", label = paste0("n_probes: ", p_sum$n[4]), x = 4, y = 1.2, size = 4) +
+#   annotate( "text", label = paste0("n_probes: ", p_sum$n[5]), x = 5, y = 1.2, size = 4)
+```
+
+```{r eval = F, echo = F}
+ggsave(
+  filename = file.path(dir.plot, "ADNI_Boxplot_modified_ICC_vs_Mean.pdf"),
+  width = 8,
+  height = 4
+)
+```
+
+```{r echo = F}
+df_stat[[2]] <- p %>% group_by(group.mean) %>% 
+  dplyr::summarise(
+    num_of_probes = n(),
+    Mean = mean(modified_ICC),
+    SD = sd(modified_ICC),
+    Min = min(modified_ICC),
+    Median = median(modified_ICC),
+    Max = max(modified_ICC)
+  ) %>% print 
+```
+
+```{r eval = F,echo = F}
+names(df_stat) <- c("mICC_vs_SD","mICC_vs_Mean")
+writexl::write_xlsx(
+  df_stat,
+  file.path(dir.reliable.score, "ADNI_modified_ICC_vs_beta_SD_Mean_table.xlsx")
+)
+```
+
+## mICC patterns
+
+### mICCs vs Islands.UCSC.Relation_to_Island
+
+
+```{r}
+df.list <- list()
+```
+
+```{r fig.width=9,fig.height=5, echo = F}
+reliable_df %>% filter(!is.na(Relation_to_Island)) %>% 
+  ggboxplot(
+    x = "Relation_to_Island",
+    y = "modified_ICC",
+    ylab = "modified ICC",
+    xlab = "UCSC Relation to Island",
+    fill = "Relation_to_Island",
+    palette = "jco"
+  ) + guides(fill = "none")
+ggsave(filename = file.path(dir.plot, "ADNI_mICC_with_relation_to_island_boxplot.pdf"),
+       width = 8, height = 4)
+```
+
+```{r echo = F}
+df.list[[1]] <- summ.table(df = reliable_df, Group = "Relation_to_Island", type = "modified_ICC") %>% print
+```
+
+### mICCs vs. UCSC_RefGene_Group
+
+
+```{r fig.width=9,fig.height=5, echo = F}
+reliable_df %>% filter(!is.na(RefGene_Group)&RefGene_Group != "") %>% 
+  ggboxplot(
+    x = "RefGene_Group",
+    y = "modified_ICC",
+    ylab = "modified ICC",
+    xlab = "UCSC RefGene Group",
+    fill = "RefGene_Group",
+    palette = "jco"
+  ) + guides(fill = "none")
+ggsave(filename = file.path(dir.plot, "ADNI_mICC_with_RefGene_Group_boxplot.pdf"),
+       width = 12, height = 5)
+```
+
+```{r echo = F}
+df.list[[2]] <- summ.table(df = reliable_df, Group = "RefGene_Group", type = "modified_ICC") %>% print
+```
+
+### mICCs vs. type I or type II probes
+
+```{r fig.width=6,fig.height=5, echo = F}
+reliable_df %>% filter(!is.na(Probe_Type)) %>% 
+  ggboxplot(
+    x = "Probe_Type",
+    y = "modified_ICC",
+    ylab = "modified ICC",
+    xlab = "Probe Type",
+    fill = "Probe_Type",
+    palette = "jco"
+  ) + guides(fill = "none")
+ggsave(filename = file.path(dir.plot, "ADNI_mICC_with_probe_type_boxplot.pdf"),
+       width = 8, height = 5)
+```
+
+```{r echo = F}
+df.list[[3]] <- summ.table(df = reliable_df, Group = "Probe_Type", type = "modified_ICC") %>% print
+```
+
+### mICCs vs. Enhancer
+
+```{r fig.width=6,fig.height=5, echo = F}
+reliable_df %>% filter(!is.na(Probe_Type)) %>% 
+  ggboxplot(
+    x = "enhancer",
+    y = "modified_ICC",
+    ylab = "modified ICC",
+    xlab = "Enhancer",
+    fill = "enhancer",
+    palette = "jco"
+  ) + guides(fill = "none")
+ggsave(filename = file.path(dir.plot, "ADNI_mICC_with_Enhancer_boxplot.pdf"),
+       width = 8, height = 6)
+```
+
+```{r echo = F}
+df.list[[4]] <- summ.table(df = reliable_df, Group = "enhancer", type = "modified_ICC") %>% print
+```
+
+### mICC vs mQTLs
+
+```{r message = F, eval = F}
+mQTLs <- readxl::read_xlsx(
+  file.path(dir.lissette, "cpg_mqtl_reliabilityAnalysis_06022023.xlsx")
+)
+reliable_df <- left_join(reliable_df, mQTLs)
+```
+
+
+```{r echo = F, eval = F}
+reliable_df  %>% filter(!is.na(mqtl)) %>%
+  ggboxplot(
+    x = "mqtl",
+    y = "modified_ICC",
+    ylab = "modified ICC",
+    xlab = "mQTLs",
+    fill = "mqtl",
+    palette = "jco"
+  )
+ggsave(filename = file.path(dir.plot, "ADNI_mICC_with_mQTLs_boxplot.pdf"),
+       width = 8, height =5)
+```
+
+```{r echo = F, eval = F}
+df.list[[5]] <- summ.table(df = reliable_df, Group = "mqtl", type = "modified_ICC") %>% print
+```
+
+```{r echo = F, eval = F}
+names(df.list) <- c(
+  "ICC_vs_Relation_to_Island",
+  "ICC_vs_RefGene_Group",
+  "ICC_vs_Probe_Type",
+  "ICC_vs_Enhancer",
+  "ICC_vs_mQTLs"
+)
+writexl::write_xlsx(
+  df.list,
+  file.path(dir.reliable.score, "ADNI_modified_ICC_vs_CpG_groups.xlsx")
+)
+```
+
+## BA plots
+
+```{r message = F}
+reliable_df <- read_csv(file.path(dir.reliable.score, "ADNI_ICC_annotation_with_HoLA_grouped.csv"))
+reliable_df_top5 <- reliable_df %>% filter(classification_Beta == "Excellent") %>% slice_max(HoLA, n = 5)
+reliable_df_top5
+```
+
+```{r}
+get_replicate.HOLA(samples.id = samples.id, beta = beta[reliable_df_top5$cpg,], iccdat = reliable_df_top5 %>% dplyr::select(cpg, ICC_Beta, beta.mean, beta.sd.rand), save = T)
+```
+
+
+# Session Information
+
+```{r}
+devtools::session_info()
+```
+

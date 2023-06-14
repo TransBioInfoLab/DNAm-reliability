@@ -1,0 +1,1372 @@
+---
+title: "Critical evaluation of the reliability of DNA methylation probes on the Illumina MethylationEPIC BeadChip microarrays for dementia research"
+subtitle: "ICC vs ADNI study results"
+author: "Wei Zhang, Lily Wang"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    highlight: pygments
+    theme: yeti
+    toc: true
+    number_sections: true
+    df_print: paged
+    code_download: false
+    toc_float:
+      collapsed: yes
+    toc_depth: 3
+    font_size: 10
+editor_options:
+  chunk_output_type: inline 
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggpubr)
+library(gmodels)
+
+dir.base <- "../../"
+dir.reliable.score <- file.path(dir.base, "analysis-results/reliable_score_different_plate")
+dir.plot <- file.path(dir.base, "analysis-results/plots")
+
+dir.mike <- file.path(dir.base, "Mike")
+dir.extra <- file.path(dir.base, "external_files")
+```
+
+## Load Results
+
+```{r}
+# ---------------------------------------------------------------------------------------
+# Auxillary function
+# ---------------------------------------------------------------------------------------
+summ.table <- function(df, Group, type = "ICC_Beta"){
+
+  d <- df %>% group_by(get(Group)) %>% 
+  dplyr::summarise(
+    num_of_probes = n(),
+    Mean = mean(get(type)),
+    SD = sd(get(type)),
+    Min = min(get(type)),
+    Median = median(get(type)),
+    Max = max(get(type))
+  ) 
+  colnames(d)[1] <- Group
+
+  return(d)  
+}
+```
+
+
+# Demonstrate reliable CpGs are more consistent across studies
+
+```{r message = F}
+reliable_df <- read_csv(file.path(dir.reliable.score, "ADNI_ICC_annotation_with_HoLA_grouped.csv"))
+```
+
+## Sex-combined study
+
+```{r eval = F}
+### Load results
+adni.results <- read_csv(file.path(dir.extra, "meta_analysis_glm_fixed_effect_ADNI_and_AIBL_AD_vs_CN_single_cpg_annotated.csv"),
+                         show_col_types = FALSE)
+
+reliable_df <- inner_join(
+  reliable_df,
+  adni.results %>% dplyr::select(cpg, estimate.bacon, se.bacon, pVal.final.bacon, direction.bacon,
+                                 ADNI_AD_vs_CN_Estimate.bacon, ADNI_AD_vs_CN_pValue.bacon,
+                                 AIBL_AD_vs_CN_Estimate.bacon, AIBL_AD_vs_CN_pValue.bacon)
+)
+reliable_df$effect_size_diff <- 
+  abs(reliable_df$ADNI_AD_vs_CN_Estimate.bacon - reliable_df$AIBL_AD_vs_CN_Estimate.bacon)
+write_csv(
+  reliable_df,
+  file.path(dir.reliable.score, "ADNI_ICC_beta_and_M_results_ind_diff_plates_samples_annotated_with_ADNI_AIBL.csv")
+)
+```
+
+
+
+```{r message = F}
+reliable_df <- read_csv(
+  file.path(dir.reliable.score, "ADNI_ICC_beta_and_M_results_ind_diff_plates_samples_annotated_with_ADNI_AIBL.csv")
+)
+```
+
+```{r echo = F, fig.width=9, fig.height=8}
+ggscatter(
+  reliable_df,
+  y = "effect_size_diff",
+  x = "ICC_Beta",
+  ylab = "Effect size absolute differences between ADNI and AIBL",
+  xlab = "ICC",
+  size = .1,
+  cor.coef = T,
+  cor.method = "spearman"
+)
+```
+
+```{r echo = F, fig.width=9, fig.height=8}
+ggscatter(
+  reliable_df,
+  y = "effect_size_diff",
+  x = "HoLA",
+  ylab = "Effect size absolute differences between ADNI and AIBL",
+  xlab = "HoLA",
+  size = .1,
+  cor.coef = T,
+  cor.method = "spearman"
+)
+```
+
+
+```{r echo = F, fig.width=9, fig.height=8}
+ggscatter(
+  reliable_df,
+  y = "effect_size_diff",
+  x = "modified_ICC",
+  ylab = "Effect size absolute differences between ADNI and AIBL",
+  xlab = "modified ICC",
+  size = .1,
+  cor.coef = T,
+  cor.method = "spearman"
+)
+```
+
+```{r}
+reliable_df$group <- factor(reliable_df$group, levels = 
+                              c(paste0("Excellent", c("+", "")),
+                                paste0("Good", c("+", "")),
+                                paste0("Fair", c("+", "")),
+                                paste0("Poor", c("+", ""))))
+```
+
+```{r  echo = F, fig.width=9, fig.height=8}
+ggboxplot(
+  data = reliable_df, 
+  x = "group",
+  y = "effect_size_diff",
+  ylab = "Effect size absolute differences between ADNI and AIBL",
+  xlab = "ICC and HoLA classification",
+  fill = "classification_Beta",
+  palette = "jco",
+  outlier.shape = NA,
+  ylim = c(0, 45)
+) 
+```
+
+```{r echo = F, fig.width=9, fig.height=8}
+ggboxplot(
+  data = reliable_df, 
+  x = "classification_Beta",
+  y = "effect_size_diff",
+  ylab = "Effect size absolute differences between ADNI and AIBL",
+  xlab = "ICC group",
+  fill = "classification_Beta",
+  palette = "jco",
+  outlier.shape = NA,
+  ylim = c(0, 45)
+) 
+```
+
+```{r echo = F, fig.width=9, fig.height=8}
+ggboxplot(
+  data = reliable_df, 
+  x = "m_ICCgroup",
+  y = "effect_size_diff",
+  ylab = "|ADNI effect size - AIBL effect size|",
+  xlab = "modified ICC",
+  fill = "m_ICCgroup",
+  palette = "jco",
+  outlier.shape = NA,
+  ylim = c(0, 40)
+) + guides(fill = "none")
+ggsave(filename = file.path(dir.plot, "ADNI_mICC_with_combined_sex_analysis_boxplot.pdf"),
+       width = 8, height = 6)
+```
+
+```{r}
+df.summ <- list()
+df.summ[[1]] <- summ.table(reliable_df, Group = "m_ICCgroup", type = "effect_size_diff")
+```
+
+
+
+## Sex-specific study
+
+```{r message = F}
+reliable_df <- read_csv(file.path(dir.reliable.score, "ADNI_ICC_annotation_with_HoLA_grouped.csv"))
+```
+
+
+### Female
+
+
+```{r eval = F}
+female.results <- read_csv(
+  file.path(dir.reliable.score, "../effect_size/FEMALE_meta_analysis_glm_fixed_effect_ADNI_and_AIBL_AD_vs_CN_single_cpg_annotated.csv")
+)
+reliable_df <- inner_join(
+  reliable_df,
+  female.results %>% dplyr::select(cpg,  ADNI_FEMALE_Estimate.bacon, ADNI_FEMALE_pValue.bacon, AIBL_FEMALE_Estimate.bacon, AIBL_FEMALE_pValue.bacon)
+)
+reliable_df$effect_size_diff <- abs(
+  reliable_df$ADNI_FEMALE_Estimate.bacon - reliable_df$AIBL_FEMALE_Estimate.bacon)
+write_csv(
+  reliable_df,
+  file.path(dir.reliable.score, "FEMALE_ICC_beta_and_M_results_ind_diff_plates_samples_annotated_with_ADNI_AIBL.csv")
+)
+```
+
+
+
+```{r message = F}
+reliable_df <- read_csv(
+  file.path(dir.reliable.score, "FEMALE_ICC_beta_and_M_results_ind_diff_plates_samples_annotated_with_ADNI_AIBL.csv")
+)
+```
+
+```{r echo = F, fig.width=9, fig.height=8}
+ggscatter(
+  reliable_df,
+  y = "effect_size_diff",
+  x = "ICC_Beta",
+  ylab = "Female effect size abs differences between ADNI and AIBL",
+  xlab = "ICC",
+  size = .1,
+  cor.coef = T,
+  cor.method = "spearman"
+)
+```
+
+```{r echo = F, fig.width=9, fig.height=8}
+ggscatter(
+  reliable_df,
+  y = "effect_size_diff",
+  x = "HoLA",
+  ylab = "Female effect size absolute differences between ADNI and AIBL",
+  xlab = "HoLA",
+  size = .1,
+  cor.coef = T,
+  cor.method = "spearman"
+)
+```
+
+```{r echo = F, fig.width=9, fig.height=8}
+ggscatter(
+  reliable_df,
+  y = "effect_size_diff",
+  x = "modified_ICC",
+  ylab = "Female effect size absolute differences between ADNI and AIBL",
+  xlab = "modified ICC",
+  size = .1,
+  cor.coef = T,
+  cor.method = "spearman"
+)
+```
+
+```{r echo = F}
+reliable_df$group <- factor(reliable_df$group, levels = 
+                              c(paste0("Excellent", c("+", "")),
+                                paste0("Good", c("+", "")),
+                                paste0("Fair", c("+", "")),
+                                paste0("Poor", c("+", ""))))
+```
+
+```{r echo = F, fig.width=9, fig.height=8}
+ggboxplot(
+  data = reliable_df, 
+  x = "group",
+  y = "effect_size_diff",
+  ylab = "Female effect size absolute differences between ADNI and AIBL",
+  xlab = "ICC and HoLA classification",
+  fill = "classification_Beta",
+  palette = "jco",
+  outlier.shape = NA,
+  ylim = c(0, 1)
+) 
+```
+
+```{r echo = F, fig.width=9, fig.height=8}
+ggboxplot(
+  data = reliable_df, 
+  x = "classification_Beta",
+  y = "effect_size_diff",
+  ylab = "Female effect size absolute differences between ADNI and AIBL",
+  xlab = "ICC group",
+  fill = "classification_Beta",
+  palette = "jco",
+  outlier.shape = NA,
+  ylim = c(0, 1)
+) 
+```
+
+
+```{r echo = F, fig.width=9, fig.height=8}
+ggboxplot(
+  data = reliable_df, 
+  x = "m_ICCgroup",
+  y = "effect_size_diff",
+  ylab = "|ADNI effect size - AIBL effect size| for females",
+  xlab = "modified ICC",
+  fill = "m_ICCgroup",
+  palette = "jco",
+  outlier.shape = NA,
+  ylim = c(0, 0.75)
+) + guides(fill = "none")
+ggsave(filename = file.path(dir.plot, "ADNI_mICC_with_female_analysis_boxplot.pdf"),
+       width = 8, height = 6)
+```
+
+```{r}
+df.summ[[2]] <- summ.table(reliable_df, Group = "m_ICCgroup", type = "effect_size_diff")
+```
+
+
+### Male
+
+```{r message = F}
+reliable_df <- read_csv(file.path(dir.reliable.score, "ADNI_ICC_annotation_with_HoLA_grouped.csv"))
+```
+
+
+```{r eval = F}
+male.results <- read_csv(
+  file.path(dir.reliable.score, "../effect_size/MALE_meta_analysis_glm_fixed_effect_ADNI_and_AIBL_AD_vs_CN_single_cpg_annotated.csv")
+)
+reliable_df <- inner_join(
+  reliable_df,
+  male.results %>% dplyr::select(cpg, 
+                                 ADNI_MALE_Estimate.bacon, ADNI_MALE_pValue.bacon,
+                                 AIBL_MALE_Estimate.bacon, AIBL_MALE_pValue.bacon)
+)
+reliable_df$effect_size_diff <- abs(
+  reliable_df$ADNI_MALE_Estimate.bacon - reliable_df$AIBL_MALE_Estimate.bacon)
+write_csv(
+  reliable_df,
+  file.path(dir.reliable.score, "MALE_ICC_beta_and_M_results_ind_diff_plates_samples_annotated_with_ADNI_AIBL.csv")
+)
+```
+
+
+
+```{r message = F}
+reliable_df <- read_csv(
+  file.path(dir.reliable.score, "MALE_ICC_beta_and_M_results_ind_diff_plates_samples_annotated_with_ADNI_AIBL.csv")
+)
+```
+
+```{r echo = F, fig.width=9, fig.height=8}
+ggscatter(
+  reliable_df,
+  y = "effect_size_diff",
+  x = "ICC_Beta",
+  ylab = "Male effect size abs differences between ADNI and AIBL",
+  xlab = "ICC",
+  size = .1,
+  cor.coef = T,
+  cor.method = "spearman"
+)
+```
+
+
+
+```{r echo = F, fig.width=9, fig.height=8}
+ggscatter(
+  reliable_df,
+  y = "effect_size_diff",
+  x = "HoLA",
+  ylab = "Male effect size absolute differences between ADNI and AIBL",
+  xlab = "HoLA",
+  size = .1,
+  cor.coef = T,
+  cor.method = "spearman"
+)
+```
+
+```{r echo = F, fig.width=9, fig.height=8}
+ggscatter(
+  reliable_df,
+  y = "effect_size_diff",
+  x = "modified_ICC",
+  ylab = "Male effect size absolute differences between ADNI and AIBL",
+  xlab = "modified ICC",
+  size = .1,
+  cor.coef = T,
+  cor.method = "spearman"
+)
+```
+
+
+```{r echo = F}
+reliable_df$group <- factor(reliable_df$group, levels = 
+                              c(paste0("Excellent", c("+", "")),
+                                paste0("Good", c("+", "")),
+                                paste0("Fair", c("+", "")),
+                                paste0("Poor", c("+", ""))))
+```
+
+```{r}
+ggboxplot(
+  data = reliable_df, 
+  x = "group",
+  y = "effect_size_diff",
+  ylab = "Male effect size absolute differences between ADNI and AIBL",
+  xlab = "ICC and HoLA classification",
+  fill = "classification_Beta",
+  palette = "jco",
+  outlier.shape = NA,
+  ylim = c(0, 1)
+) 
+```
+
+```{r}
+ggboxplot(
+  data = reliable_df, 
+  x = "classification_Beta",
+  y = "effect_size_diff",
+  ylab = "Male effect size absolute differences between ADNI and AIBL",
+  xlab = "ICC group",
+  fill = "classification_Beta",
+  palette = "jco",
+  outlier.shape = NA,
+  ylim = c(0, 1)
+) 
+```
+
+```{r}
+ggboxplot(
+  data = reliable_df, 
+  x = "m_ICCgroup",
+  y = "effect_size_diff",
+  ylab = "|ADNI effect size - AIBL effect size| for males",
+  xlab = "modified ICC",
+  fill = "m_ICCgroup",
+  palette = "jco",
+  outlier.shape = NA,
+  ylim = c(0, 1)
+) 
+ggsave(filename = file.path(dir.plot, "ADNI_mICC_with_male_analysis_boxplot.pdf"),
+       width = 8, height = 6)
+```
+
+```{r}
+df.summ[[3]] <- summ.table(reliable_df, Group = "m_ICCgroup", type = "effect_size_diff")
+```
+
+```{r}
+names(df.summ) <- c("Combined", "Female", "Male")
+writexl::write_xlsx(
+  df.summ,
+  file.path(dir.reliable.score, "ADNI_mICC_effect_size_analysis_boxplot.xlsx")
+)
+```
+
+
+# Demonstrate reliable CpGs have methylation levels that are more consistent across brain and blood 
+
+```{r message = F}
+reliable_df <- read_csv(file.path(dir.reliable.score, "ADNI_ICC_annotation_with_HoLA_grouped.csv"))
+```
+
+```{r echo = F}
+reliable_df$group <- factor(reliable_df$group, levels = 
+                              c(paste0("Excellent", c("+", "")),
+                                paste0("Good", c("+", "")),
+                                paste0("Fair", c("+", "")),
+                                paste0("Poor", c("+", ""))))
+```
+
+```{r message = F}
+london.corr <- read_csv(
+  file.path(dir.extra, "London_blood_brain_correlation_cpgs.csv")
+)
+reliable_df <- inner_join(
+  reliable_df, london.corr
+)
+reliable_df <- reliable_df %>% mutate(
+  beta_spearman_cor_group = ifelse(
+  beta_spearman_cor < 0.4, "Low", ifelse(beta_spearman_cor < 0.75 & beta_spearman_cor > 0.4, "Medium", "High")),
+  residual_spearman_cor_group = ifelse(
+  residual_spearman_cor < 0.4, "Low", ifelse(residual_spearman_cor < 0.75 & residual_spearman_cor > 0.4, "Medium", "High")))
+```
+
+```{r eval= F,echo = F}
+write_csv(reliable_df, file.path(dir.reliable.score,"ADNI_ICC_beta_and_M_results_ind_diff_plates_samples_annotated_with_ADNI_AIBL_brain_blood_corr.csv"))
+```
+
+```{r eval= F,echo = F}
+reliable_df <- read_csv( file.path(dir.reliable.score,"ADNI_ICC_beta_and_M_results_ind_diff_plates_samples_annotated_with_ADNI_AIBL_brain_blood_corr.csv"))
+```
+
+
+## Beta correlation vs ICC and HoLA 
+
+```{r echo = F, fig.width=9, fig.height=8}
+ggscatter(
+  reliable_df,
+  y = "beta_spearman_cor",
+  x = "ICC_Beta",
+  xlab = "ICC",
+  ylab = "London Beta correlation",
+  size = .1,
+  cor.coef = T,
+  cor.method = "spearman"
+)
+```
+
+```{r echo = F, fig.width=9, fig.height=8}
+ggscatter(
+  reliable_df,
+  y = "beta_spearman_cor",
+  x = "HoLA",
+  xlab = "HoLA",
+  ylab = "London Beta correlation",
+  size = .1,
+  cor.coef = T,
+  cor.method = "spearman"
+)
+```
+
+```{r echo = F, fig.width=9, fig.height=8}
+reliable_df$beta_spearman_cor_group <- factor(reliable_df$beta_spearman_cor_group, levels = c("Low", "Medium", "High"))
+p_sum <- reliable_df %>% dplyr::group_by(beta_spearman_cor_group) %>% dplyr::summarise(n = dplyr::n())
+ggboxplot(
+  reliable_df,
+  x = "beta_spearman_cor_group",
+  y = "modified_ICC",
+  ylab = "modified ICC",
+  xlab = "brain-blood correlation of DNA methylation levels",
+  fill = "beta_spearman_cor_group",
+  palette = "jco",
+  #outlier.shape = NA
+) + guides(fill = "none")
+```
+
+```{r eval = F}
+ggsave(filename = file.path(dir.plot, "ADNI_mICC_with_brain_blood_corr_boxplot.pdf"),
+       width = 8, height = 5)
+```
+
+```{r}
+summ.table(df = reliable_df, Group = "beta_spearman_cor_group", type = "modified_ICC") %>% 
+  write_csv(file.path(dir.reliable.score, "ADNI_modified_ICC_vs_brain_blood_corr_groups.csv"))
+```
+
+
+
+```{r echo = F, fig.width=9, fig.height=8}
+ggviolin(
+  reliable_df,
+  x = "beta_spearman_cor_group",
+  y = "modified_ICC",
+  ylab = "modified ICC",
+  xlab = "London Beta correlation",
+  fill = "beta_spearman_cor_group",
+  palette = "simpsons",
+  add = "boxplot",
+  add.params = list(fill = NA),
+  color = "navy"
+  #outlier.shape = NA
+) + annotate( "text", label = paste0( p_sum$n[1]), x = 1, y = 1.2, size = 4) +
+  annotate( "text", label = paste0(p_sum$n[2]), x = 2, y = 1.2, size = 4) +
+  annotate( "text", label = paste0(p_sum$n[3]), x = 3, y = 1.2, size = 4) +
+  theme(legend.title = element_blank())
+```
+
+```{r echo = F, fig.width=9, fig.height=8}
+ggviolin(
+  reliable_df,
+  x = "beta_spearman_cor_group",
+  y = "HoLA",
+  ylab = "HoLA",
+  xlab = "London Beta correlation",
+  fill = "beta_spearman_cor_group",
+  palette = "simpsons",
+  add = "boxplot",
+  add.params = list(fill = NA),
+  color = "navy"
+  #outlier.shape = NA
+) + annotate( "text", label = paste0( p_sum$n[1]), x = 1, y = 0.75, size = 4) +
+  annotate( "text", label = paste0(p_sum$n[2]), x = 2, y = 0.75, size = 4) +
+  annotate( "text", label = paste0(p_sum$n[3]), x = 3, y = 0.75, size = 4) +
+  theme(legend.title = element_blank())
+```
+
+
+```{r warning = F, fig.width=9,fig.height=5, echo = F}
+ggboxplot(
+  data = reliable_df, 
+  x = "group",
+  y = "beta_spearman_cor",
+  ylab = "London Beta correlation",
+  xlab = "ICC and HoLA group",
+  fill = "classification_Beta",
+  palette = "jco",
+  outlier.shape = NA
+)
+```
+
+```{r warning = F, fig.width=9,fig.height=5, echo = F}
+ggboxplot(
+  data = reliable_df, 
+  x = "classification_Beta",
+  y = "beta_spearman_cor",
+  ylab = "London Beta correlation",
+  xlab = "ICC group",
+  fill = "classification_Beta",
+  palette = "jco",
+  outlier.shape = NA
+)
+```
+
+
+```{r warning = F, fig.width=9,fig.height=5, echo = F}
+ggboxplot(
+  data = reliable_df, 
+  x = "m_ICCgroup",
+  y = "beta_spearman_cor",
+  ylab = "London Beta correlation",
+  xlab = "ICC group",
+  fill = "m_ICCgroup",
+  palette = "jco",
+  outlier.shape = NA
+)
+```
+
+```{r warning = F, fig.width=9,fig.height=5, echo = F}
+ggboxplot(
+  data = reliable_df, 
+  x = "group",
+  y = "beta_spearman_cor",
+  ylab = "London Beta correlation",
+  xlab = "ICC and HoLA group",
+  fill = "classification_Beta",
+  palette = "jco",
+  outlier.shape = NA
+)
+```
+
+
+## Residuals correlation vs ICC
+
+
+```{r echo = F, fig.width=9, fig.height=8}
+ggscatter(
+  reliable_df,
+  y = "residual_spearman_cor",
+  x = "ICC_Beta",
+  xlab = "ICC",
+  ylab = "London residual correlation",
+  size = .1,
+  cor.coef = T,
+  cor.method = "spearman"
+)
+```
+
+```{r echo = F, fig.width=9, fig.height=8}
+ggscatter(
+  reliable_df,
+  y = "residual_spearman_cor",
+  x = "HoLA",
+  xlab = "HoLA",
+  ylab = "London residual correlation",
+  size = .1,
+  cor.coef = T,
+  cor.method = "spearman"
+)
+```
+
+```{r echo = F, fig.width=9, fig.height=8}
+ggscatter(
+  reliable_df,
+  y = "residual_spearman_cor",
+  x = "modified_ICC",
+  xlab = "modified ICC",
+  ylab = "London residual correlation",
+  size = .1,
+  cor.coef = T,
+  cor.method = "spearman"
+)
+```
+
+```{r echo = F, fig.width=9, fig.height=8}
+reliable_df$residual_spearman_cor_group <- factor(reliable_df$residual_spearman_cor_group, levels = c("Low", "Medium", "High"))
+p_sum <- reliable_df %>% dplyr::group_by(residual_spearman_cor_group) %>% dplyr::summarise(n = dplyr::n())
+ggviolin(
+  reliable_df,
+  x = "residual_spearman_cor_group",
+  y = "ICC_Beta",
+  ylab = "Reliability",
+  xlab = "London residual correlation",
+  fill = "residual_spearman_cor_group",
+  palette = "simpsons",
+  add = "boxplot",
+  add.params = list(fill = NA),
+  color = "navy"
+  #outlier.shape = NA
+) + annotate( "text", label = paste0( p_sum$n[1]), x = 1, y = 1.2, size = 4) +
+  annotate( "text", label = paste0(p_sum$n[2]), x = 2, y = 1.2, size = 4) +
+  annotate( "text", label = paste0(p_sum$n[3]), x = 3, y = 1.2, size = 4) +
+  theme(legend.title = element_blank())
+```
+
+```{r echo = F, fig.width=9, fig.height=8}
+ggviolin(
+  reliable_df,
+  x = "residual_spearman_cor_group",
+  y = "modified_ICC",
+  ylab = "modified ICC",
+  xlab = "London residual correlation",
+  fill = "residual_spearman_cor_group",
+  palette = "simpsons",
+  add = "boxplot",
+  add.params = list(fill = NA),
+  color = "navy"
+  #outlier.shape = NA
+) + annotate( "text", label = paste0( p_sum$n[1]), x = 1, y = 1.2, size = 4) +
+  annotate( "text", label = paste0(p_sum$n[2]), x = 2, y = 1.2, size = 4) +
+  annotate( "text", label = paste0(p_sum$n[3]), x = 3, y = 1.2, size = 4) +
+  theme(legend.title = element_blank())
+```
+
+```{r echo = F, fig.width=9, fig.height=8}
+ggviolin(
+  reliable_df,
+  x = "residual_spearman_cor_group",
+  y = "HoLA",
+  ylab = "HoLA",
+  xlab = "London residual correlation",
+  fill = "residual_spearman_cor_group",
+  palette = "simpsons",
+  add = "boxplot",
+  add.params = list(fill = NA),
+  color = "navy"
+  #outlier.shape = NA
+) + annotate( "text", label = paste0( p_sum$n[1]), x = 1, y = 0.75, size = 4) +
+  annotate( "text", label = paste0(p_sum$n[2]), x = 2, y = 0.75, size = 4) +
+  annotate( "text", label = paste0(p_sum$n[3]), x = 3, y = 0.75, size = 4) +
+  theme(legend.title = element_blank())
+```
+
+
+```{r warning = F, fig.width=9,fig.height=5, echo = F}
+ggboxplot(
+  data = reliable_df, 
+  x = "group",
+  y = "residual_spearman_cor",
+  ylab = "London residual correlation",
+  xlab = "ICC and HoLA group",
+  fill = "classification_Beta",
+  palette = "jco",
+  outlier.shape = NA
+)
+```
+
+```{r warning = F, fig.width=9,fig.height=5, echo = F}
+ggboxplot(
+  data = reliable_df, 
+  x = "classification_Beta",
+  y = "residual_spearman_cor",
+  ylab = "London residual correlation",
+  xlab = "ICC group",
+  fill = "classification_Beta",
+  palette = "jco",
+  outlier.shape = NA
+)
+```
+
+```{r warning = F, fig.width=9,fig.height=5, echo = F}
+ggboxplot(
+  data = reliable_df, 
+  x = "m_ICCgroup",
+  y = "residual_spearman_cor",
+  ylab = "London residual correlation",
+  xlab = "modified ICC group",
+  fill = "m_ICCgroup",
+  palette = "jco",
+  outlier.shape = NA
+)
+```
+
+# Show that CpGs that correlate with CSF AD biomarkers are also more reliable than other CpGs 
+
+```{r message = F}
+reliable_df <- read_csv(file.path(dir.reliable.score, "ADNI_ICC_annotation_with_HoLA_grouped.csv"))
+```
+
+
+```{r message = F}
+## Load regression results
+DX <- c("AD","CN")
+file.list.lm.names <- list.files(
+  path = file.path(dir.extra, "adjusted"),
+  pattern = paste0(DX, "_results",collapse = "|"),
+  full.names = T,
+  recursive = T
+)
+
+file.list.lm <- file.list.lm.names %>% purrr::map(~readr::read_csv(.))
+names(file.list.lm) <- unlist(
+  paste0(
+    "ADNI",
+    file.list.lm.names %>% purrr::map(~stringr::str_match(.,"_AD|_CN")),
+    file.list.lm.names %>% purrr::map(~stringr::str_extract(.,"_ABETA|_PTAU|_TAU"))
+  )
+)
+single.sig.cpgs <- file.list.lm %>% purrr::map(~filter(., pValue.bacon.z < 1e-05)) %>% 
+  data.table::rbindlist(.,idcol = "ID") %>% mutate(ID = gsub("ADNI_","",ID)) %>% 
+  separate(ID, into = c("Sample", "CSF"), sep = "_",  remove = T)
+```
+
+```{r}
+reliable_df$group_sig <- ifelse(reliable_df$cpg %in% single.sig.cpgs$cpg, "Yes", "No")
+p_sum <- reliable_df %>% dplyr::group_by(group_sig) %>% dplyr::summarise(n = dplyr::n())
+reliable_df$group_sig <- factor(reliable_df$group_sig, levels = c("Yes", "No"))
+```
+
+```{r warning = F, fig.width=9,fig.height=5, echo = F}
+ggboxplot(
+  data = reliable_df, 
+  x = "group_sig",
+  y = "modified_ICC",
+  ylab = "modified ICC",
+  xlab = "probes with significant association to CSF AD biomarkers",
+  fill = "group_sig",
+  palette = "jco",
+  #outlier.shape = NA,
+) + guides(fill = "none") +
+  theme(axis.title = element_text(size = 14))
+  
+ggsave(filename = file.path(dir.plot, "ADNI_modified_ICC_with_sig_CSF_cpg_with_sig_CSF_cpgs_boxplots.pdf"),
+       width = 10, height = 6)
+```
+
+```{r}
+summ.table(reliable_df, Group = "group_sig", type = "modified_ICC") %>%
+  write_csv(file.path(dir.reliable.score, "ADNI_modified_ICC_vs_CSF_groups.csv"))
+```
+
+
+## pTAU
+
+```{r}
+reliable_df$group_sig_tau <- ifelse(reliable_df$cpg %in% 
+                                      (single.sig.cpgs %>% 
+                                         filter(CSF == "PTAU") %>%
+                                         pull(cpg)), "groupA", "groupB")
+```
+
+### Boxplots group A vs B
+
+```{r warning = F, fig.width=9,fig.height=5, echo = F}
+ggboxplot(
+  data = reliable_df, 
+  x = "group_sig_tau",
+  y = "ICC_Beta",
+  ylab = "ICC",
+  xlab = "pTAU group",
+  fill = "group_sig_tau",
+  palette = "jco",
+  outlier.shape = NA,
+) + stat_compare_means(  method = "wilcox.test")
+```
+
+```{r warning = F, fig.width=9,fig.height=5, echo = F}
+ggboxplot(
+  data = reliable_df, 
+  x = "group_sig_tau",
+  y = "HoLA",
+  ylab = "HoLA",
+  xlab = "pTAU group",
+  fill = "group_sig_tau",
+  palette = "jco",
+) + stat_compare_means(  method = "wilcox.test")
+```
+
+
+```{r warning = F, fig.width=9,fig.height=5, echo = F}
+ggboxplot(
+  data = reliable_df, 
+  x = "group_sig_tau",
+  y = "modified_ICC",
+  ylab = "modified ICC",
+  xlab = "pTAU group",
+  fill = "group_sig_tau",
+  palette = "jco",
+) + stat_compare_means(  method = "wilcox.test")
+```
+
+### Scatter plots
+
+```{r}
+reliable_df.ad <- inner_join(reliable_df, file.list.lm$ADNI_AD_PTAU %>% select(cpg, Estimate.bacon))
+reliable_df.cn <- inner_join(reliable_df, file.list.lm$ADNI_CN_PTAU %>% select(cpg, Estimate.bacon))
+```
+
+#### AD
+
+```{r echo = F, fig.width=9, fig.height=8}
+ggscatter(
+  reliable_df.ad,
+  y = "Estimate.bacon",
+  x = "ICC_Beta",
+  xlab = "ICC",
+  ylab = "pTAU AD effect size",
+  size = .1,
+  cor.coef = T,
+  cor.method = "spearman"
+)
+```
+
+```{r echo = F, fig.width=9, fig.height=8}
+ggscatter(
+  reliable_df.ad,
+  y = "Estimate.bacon",
+  x = "HoLA",
+  xlab = "HoLA",
+  ylab = "pTAU AD effect size",
+  size = .1,
+  cor.coef = T,
+  cor.method = "spearman"
+)
+```
+
+```{r echo = F, fig.width=9, fig.height=8}
+ggscatter(
+  reliable_df.ad,
+  y = "Estimate.bacon",
+  x = "modified_ICC",
+  xlab = "modified ICC",
+  ylab = "pTAU AD effect size",
+  size = .1,
+  cor.coef = T,
+  cor.method = "spearman"
+)
+```
+
+#### CN
+
+```{r echo = F, fig.width=9, fig.height=8}
+ggscatter(
+  reliable_df.cn,
+  y = "Estimate.bacon",
+  x = "ICC_Beta",
+  xlab = "ICC",
+  ylab = "pTAU CN effect size",
+  size = .1,
+  cor.coef = T,
+  cor.method = "spearman"
+)
+```
+
+```{r echo = F, fig.width=9, fig.height=8}
+ggscatter(
+  reliable_df.cn,
+  y = "Estimate.bacon",
+  x = "HoLA",
+  xlab = "HoLA",
+  ylab = "pTAU CN effect size",
+  size = .1,
+  cor.coef = T,
+  cor.method = "spearman"
+)
+```
+
+```{r echo = F, fig.width=9, fig.height=8}
+ggscatter(
+  reliable_df.cn,
+  y = "Estimate.bacon",
+  x = "modified_ICC",
+  xlab = "modified ICC",
+  ylab = "pTAU CN effect size",
+  size = .1,
+  cor.coef = T,
+  cor.method = "spearman"
+)
+```
+
+### Boxplots between groups
+
+#### AD
+
+```{r warning = F, fig.width=9,fig.height=5, echo = F}
+ggboxplot(
+  data = reliable_df.ad, 
+  x = "classification_Beta",
+  y = "Estimate.bacon",
+  ylab = "pTAU AD effect size",
+  xlab = "ICC group",
+  fill = "classification_Beta",
+  palette = "jco",
+  outlier.shape = NA
+)
+```
+
+```{r warning = F, fig.width=9,fig.height=5, echo = F}
+ggboxplot(
+  data = reliable_df.ad, 
+  x = "group",
+  y = "Estimate.bacon",
+  ylab = "pTAU AD effect size",
+  xlab = "ICC and HoLA group",
+  fill = "classification_Beta",
+  palette = "jco",
+  outlier.shape = NA
+)
+```
+
+```{r warning = F, fig.width=9,fig.height=5, echo = F}
+ggboxplot(
+  data = reliable_df.ad, 
+  x = "m_ICCgroup",
+  y = "Estimate.bacon",
+  ylab = "pTAU AD effect size",
+  xlab = "modified ICC group",
+  fill = "m_ICCgroup",
+  palette = "jco",
+  outlier.shape = NA
+)
+```
+
+#### CN
+
+```{r warning = F, fig.width=9,fig.height=5, echo = F}
+ggboxplot(
+  data = reliable_df.cn, 
+  x = "classification_Beta",
+  y = "Estimate.bacon",
+  ylab = "pTAU CN effect size",
+  xlab = "ICC group",
+  fill = "classification_Beta",
+  palette = "jco",
+  outlier.shape = NA
+)
+```
+
+```{r warning = F, fig.width=9,fig.height=5, echo = F}
+ggboxplot(
+  data = reliable_df.cn, 
+  x = "group",
+  y = "Estimate.bacon",
+  ylab = "pTAU CN effect size",
+  xlab = "ICC and HoLA group",
+  fill = "classification_Beta",
+  palette = "jco",
+  outlier.shape = NA
+)
+```
+
+```{r warning = F, fig.width=9,fig.height=5, echo = F}
+ggboxplot(
+  data = reliable_df.cn, 
+  x = "m_ICCgroup",
+  y = "Estimate.bacon",
+  ylab = "pTAU CN effect size",
+  xlab = "modified ICC group",
+  fill = "m_ICCgroup",
+  palette = "jco",
+  outlier.shape = NA
+)
+```
+
+## ABETA
+
+```{r message = F}
+reliable_df <- read_csv(file.path(dir.reliable.score, "ADNI_ICC_annotation_with_HoLA_grouped.csv"))
+```
+
+```{r}
+reliable_df$group_sig_abeta <- ifelse(reliable_df$cpg %in% 
+                                      (single.sig.cpgs %>% 
+                                         filter(CSF == "ABETA") %>%
+                                         pull(cpg)), "groupA", "groupB")
+```
+
+### Boxplots group A vs B
+
+```{r warning = F, fig.width=9,fig.height=5, echo = F}
+ggboxplot(
+  data = reliable_df, 
+  x = "group_sig_abeta",
+  y = "ICC_Beta",
+  ylab = "ICC",
+  xlab = "ABETA group",
+  fill = "group_sig_abeta",
+  palette = "jco",
+  outlier.shape = NA,
+) + stat_compare_means(  method = "wilcox.test")
+```
+
+```{r warning = F, fig.width=9,fig.height=5, echo = F}
+ggboxplot(
+  data = reliable_df, 
+  x = "group_sig_abeta",
+  y = "HoLA",
+  ylab = "HoLA",
+  xlab = "ABETA group",
+  fill = "group_sig_abeta",
+  palette = "jco",
+) + stat_compare_means(  method = "wilcox.test")
+```
+
+
+```{r warning = F, fig.width=9,fig.height=5, echo = F}
+ggboxplot(
+  data = reliable_df, 
+  x = "group_sig_abeta",
+  y = "modified_ICC",
+  ylab = "modified ICC",
+  xlab = "ABETA group",
+  fill = "group_sig_abeta",
+  palette = "jco",
+) + stat_compare_means(  method = "wilcox.test")
+```
+
+### Scatter plots
+
+```{r}
+reliable_df.ad <- inner_join(reliable_df, file.list.lm$ADNI_AD_ABETA %>% select(cpg, Estimate.bacon))
+reliable_df.cn <- inner_join(reliable_df, file.list.lm$ADNI_CN_ABETA %>% select(cpg, Estimate.bacon))
+```
+
+#### AD
+
+```{r echo = F, fig.width=9, fig.height=8}
+ggscatter(
+  reliable_df.ad,
+  y = "Estimate.bacon",
+  x = "ICC_Beta",
+  xlab = "ICC",
+  ylab = "ABETA AD effect size",
+  size = .1,
+  cor.coef = T,
+  cor.method = "spearman"
+)
+```
+
+```{r echo = F, fig.width=9, fig.height=8}
+ggscatter(
+  reliable_df.ad,
+  y = "Estimate.bacon",
+  x = "HoLA",
+  xlab = "HoLA",
+  ylab = "ABETA AD effect size",
+  size = .1,
+  cor.coef = T,
+  cor.method = "spearman"
+)
+```
+
+```{r echo = F, fig.width=9, fig.height=8}
+ggscatter(
+  reliable_df.ad,
+  y = "Estimate.bacon",
+  x = "modified_ICC",
+  xlab = "modified ICC",
+  ylab = "ABETA AD effect size",
+  size = .1,
+  cor.coef = T,
+  cor.method = "spearman"
+)
+```
+
+#### CN
+
+```{r echo = F, fig.width=9, fig.height=8}
+ggscatter(
+  reliable_df.cn,
+  y = "Estimate.bacon",
+  x = "ICC_Beta",
+  xlab = "ICC",
+  ylab = "ABETA CN effect size",
+  size = .1,
+  cor.coef = T,
+  cor.method = "spearman"
+)
+```
+
+```{r echo = F, fig.width=9, fig.height=8}
+ggscatter(
+  reliable_df.cn,
+  y = "Estimate.bacon",
+  x = "HoLA",
+  xlab = "HoLA",
+  ylab = "ABETA CN effect size",
+  size = .1,
+  cor.coef = T,
+  cor.method = "spearman"
+)
+```
+
+```{r echo = F, fig.width=9, fig.height=8}
+ggscatter(
+  reliable_df.cn,
+  y = "Estimate.bacon",
+  x = "modified_ICC",
+  xlab = "modified ICC",
+  ylab = "ABETA CN effect size",
+  size = .1,
+  cor.coef = T,
+  cor.method = "spearman"
+)
+```
+
+### Boxplots between groups
+
+#### AD
+
+```{r warning = F, fig.width=9,fig.height=5, echo = F}
+ggboxplot(
+  data = reliable_df.ad, 
+  x = "classification_Beta",
+  y = "Estimate.bacon",
+  ylab = "ABETA AD effect size",
+  xlab = "ICC group",
+  fill = "classification_Beta",
+  palette = "jco",
+  outlier.shape = NA
+)
+```
+
+```{r warning = F, fig.width=9,fig.height=5, echo = F}
+ggboxplot(
+  data = reliable_df.ad, 
+  x = "group",
+  y = "Estimate.bacon",
+  ylab = "ABETA AD effect size",
+  xlab = "ICC and HoLA group",
+  fill = "classification_Beta",
+  palette = "jco",
+  outlier.shape = NA
+)
+```
+
+```{r warning = F, fig.width=9,fig.height=5, echo = F}
+ggboxplot(
+  data = reliable_df.ad, 
+  x = "m_ICCgroup",
+  y = "Estimate.bacon",
+  ylab = "ABETA AD effect size",
+  xlab = "modified ICC group",
+  fill = "m_ICCgroup",
+  palette = "jco",
+  outlier.shape = NA
+)
+```
+
+#### CN
+
+```{r warning = F, fig.width=9,fig.height=5, echo = F}
+ggboxplot(
+  data = reliable_df.cn, 
+  x = "classification_Beta",
+  y = "Estimate.bacon",
+  ylab = "ABETA CN effect size",
+  xlab = "ICC group",
+  fill = "classification_Beta",
+  palette = "jco",
+  outlier.shape = NA
+)
+```
+
+```{r warning = F, fig.width=9,fig.height=5, echo = F}
+ggboxplot(
+  data = reliable_df.cn, 
+  x = "group",
+  y = "Estimate.bacon",
+  ylab = "ABETA CN effect size",
+  xlab = "ICC and HoLA group",
+  fill = "classification_Beta",
+  palette = "jco",
+  outlier.shape = NA
+)
+```
+
+```{r warning = F, fig.width=9,fig.height=5, echo = F}
+ggboxplot(
+  data = reliable_df.cn, 
+  x = "m_ICCgroup",
+  y = "Estimate.bacon",
+  ylab = "ABETA CN effect size",
+  xlab = "modified ICC group",
+  fill = "m_ICCgroup",
+  palette = "jco",
+  outlier.shape = NA
+)
+```
+
+# Demenstrate that CpGs have higher probes reliability (mICC) are more likely located within DMRs 
+
+```{r message = F}
+DMR <- readxl::read_xlsx(file.path(dir.mike, "cpg_plus3.xlsx"))
+```
+
+## Combined sex analysis
+
+```{r warning = F, fig.width=9,fig.height=5, echo = F}
+ggboxplot(
+  data = DMR %>% mutate(located_in_combined = ifelse(located_in_combined == 1, "Yes", "No")), 
+  y = "modified_ICC",
+  x = "located_in_combined",
+  ylab = "modified ICC",
+  xlab = "probes located within AD-associated DMRs",
+  fill = "located_in_combined",
+  palette = "jco",
+  outlier.shape = NA
+) + guides(fill = "none")
+ggsave(filename = file.path(dir.plot, "ADNI_mICC_with_combined_sex_DMR_analysis_boxplot.pdf"),
+       width = 8, height = 5)
+```
+
+```{r}
+summ.table(DMR, Group = "located_in_combined", type = "modified_ICC")
+```
+
+## Female
+
+```{r warning = F, fig.width=9,fig.height=5, echo = F}
+ggboxplot(
+  data = DMR %>% mutate(located_in_females = ifelse(located_in_females == 1, "Yes", "No")), 
+  y = "modified_ICC",
+  x = "located_in_females",
+  ylab = "modified ICC",
+  xlab = "probes located within AD-associated DMRs",
+  fill = "located_in_females",
+  palette = "jco",
+  outlier.shape = NA
+) + guides(fill = "none")
+ggsave(filename = file.path(dir.plot, "Female_ADNI_mICC_with_combined_sex_DMR_analysis_boxplot.pdf"),
+       width = 8, height = 5)
+```
+
+```{r}
+summ.table(DMR, Group = "located_in_females", type = "modified_ICC")
+```
+
+
+## Male
+
+```{r warning = F, fig.width=9,fig.height=5, echo = F}
+ggboxplot(
+  data = DMR %>% mutate(located_in_males = ifelse(located_in_males == 1, "Yes", "No")), 
+  y = "modified_ICC",
+  x = "located_in_males",
+  ylab = "modified ICC",
+  xlab = "probes located within AD-associated DMRs",
+  fill = "located_in_males",
+  palette = "jco",
+  outlier.shape = NA
+) + guides(fill = "none")
+ggsave(filename = file.path(dir.plot, "Male_ADNI_mICC_with_combined_sex_DMR_analysis_boxplot.pdf"),
+       width = 8, height = 5)
+```
+
+```{r}
+summ.table(DMR, Group = "located_in_males", type = "modified_ICC")
+```
+
+# Session Information
+
+```{r}
+devtools::session_info()
+```

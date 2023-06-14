@@ -1,0 +1,200 @@
+---
+title: "Critical evaluation of the reliability of DNA methylation probes on the Illumina MethylationEPIC BeadChip microarrays for dementia research"
+subtitle: "Cell type proportion ICC"
+author: "Wei Zhang, Lily Wang"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    highlight: pygments
+    theme: yeti
+    toc: true
+    number_sections: true
+    df_print: paged
+    code_download: false
+    toc_float:
+      collapsed: yes
+    toc_depth: 3
+    font_size: 10
+editor_options:
+  chunk_output_type: inline 
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(irr)
+
+dir.base <- "../../"
+dir.data.new <- file.path(dir.base, "data/ADNI")
+dir.data.new.processed <- file.path(dir.data.new, "DNA_methylation/processed")
+dir.cell.type <- file.path(dir.base, "analysis-results/cell_type")
+dir.plot <- file.path(dir.base, "analysis-results/plots")
+
+dir.achintya <- file.path(dir.base, "Achintya")
+for(p in grep("dir",ls(),value = T)) dir.create(get(p),recursive = TRUE,showWarnings = FALSE)
+```
+
+# Load results
+
+```{r message = F}
+sample1 <- read_csv(
+  file.path(dir.achintya, "sample_one_cell_proportions.csv")
+)[,-9] # remove geo number
+colnames(sample1)[1] <- "barcodes"
+sample2 <- read_csv(
+  file.path(dir.achintya, "sample_two_cell_proportions.csv")
+)
+colnames(sample2)[1] <- "barcodes"
+cell_type <- rbind(sample1, sample2) %>% column_to_rownames("barcodes") %>% t()
+colnames(cell_type) <- gsub("^X", "", colnames(cell_type))
+# sample information
+samples.duplicated <- readxl::read_xlsx(
+  file.path(dir.data.new.processed, "ADNI_DNA_Methylation_Sample_Duplicated_Diff_Plates.xlsx")
+)
+samples.id <- samples.duplicated %>% dplyr::select(RID_Phase_Edata, barcodes) %>% 
+  dplyr::group_by(RID_Phase_Edata) %>% 
+  dplyr::mutate(obs = dplyr::row_number()) %>% 
+  pivot_wider(names_from = "obs", 
+              values_from = "barcodes", 
+              names_prefix="barcodes")
+```
+
+
+```{r}
+# ---------------------------------------------------------------------------------------
+# Auxillary function
+# ---------------------------------------------------------------------------------------
+create_rating <- function(samples.id, beta, model = "twoway", type = "agreement", unit = "average", random = F, scale = F, id = "cpg"){
+  
+  barcodes <- samples.id[,c("barcodes1", "barcodes2")]
+  if(random){
+    sam <- sample.int(size = nrow(barcodes), n = 2, replace = T)
+    barcodes <- sapply(1:nrow(barcodes),  function(i) c(barcodes[i,sam[i]],barcodes[i,-sam[i]])) %>% t() 
+    rownames(barcodes) <- samples.id$RID_Phase_Edata
+  }
+
+  
+  doParallel::registerDoParallel(20)
+  rating_matrix <- plyr::adply(
+    beta,
+    .margins = 1,
+    .fun = function(probe){
+      rating <- plyr::aaply(
+        barcodes,
+        .margins = 1, 
+        .fun = function(bar){
+          probe[bar %>% unlist()]
+        },.expand = F
+      )
+      if(scale) rating <- scale(rating)
+      ic <- icc(rating, model = model, type = type, unit = unit)
+      data.frame(value = ic$value, r0 = ic$r0, Fvalue = ic$Fvalue,
+                 df1 = ic$df1, df2 = ic$df2, p.value = ic$p.value, 
+                 lbound = ic$lbound, ubound = ic$ubound)
+    },.parallel = T, .id = id
+  )
+  
+  return(rating_matrix)
+}
+
+get_replicate.HOLA <- function(samples.id, beta, iccdat, save = F){
+  
+  barcodes <- samples.id[,c("barcodes1", "barcodes2")]
+  cpgs <- rownames(beta)
+
+  doParallel::registerDoParallel(4)
+  HOLA <- plyr::ldply(
+    cpgs,
+    .fun = function(c){
+      rating <- plyr::aaply(
+        barcodes,
+        .margins = 1, 
+        .fun = function(bar){
+          probe <- beta[c,]
+          probe[bar %>% unlist()]
+        },.expand = F
+      ) %>% as.data.frame()
+      
+      colnames(rating) <- c("Rep1", "Rep2")
+      rating$avg <- rowMeans(rating)
+      rating$diff <- rating[,1] - rating[,2]
+      mean_diff <- mean(rating$diff)
+      lower <- mean_diff - 1.96 * sd(rating$diff)
+      upper <- mean_diff + 1.96 * sd(rating$diff)
+      rating$abs_diff <- abs(rating$Rep1 - rating$Rep2)
+      rating$mean_abs_diff <- mean(rating$abs_diff)
+      
+      df <- data.frame(
+         cell_type = c,
+         cell_type_mean_diff = mean_diff,
+         HoLA = 1.96 * sd(rating$diff),
+         lower_diff = lower,
+         upper_diff = upper,
+         mean_abs_diff = mean(rating$abs_diff)
+       )
+      df <- left_join(df, iccdat %>% filter(cell_type == c))
+      
+      if(save){
+        
+        # save BA plot for the cpg
+        ggplot(rating , aes(x = avg, y = diff)) +
+          geom_point(size=1.5) +
+          geom_hline(yintercept = mean_diff, color = "grey", linetype="dashed") +
+          geom_hline(yintercept = lower, color = "red", linetype="dashed") +
+          geom_hline(yintercept = upper, color = "red", linetype="dashed") +
+          labs(title = c, subtitle = paste0("ICC = ", round(df$ICC_Beta,4), 
+                         " Beta mean = ", round(df$beta.mean,4), " Beta sd = ",  round(df$beta.sd.rand, 4), " HoLA =", round(df$HoLA, 4), " ICC - HoLA = ", round(df$ICC_Beta - df$HoLA,4))) +
+          ylab("Difference Between Measurements") +
+          xlab("Average Measurement") + theme_bw() +
+          annotate("text", y = mean_diff, x = Inf, label = paste0("Bias\n ", round(mean_diff,5)),hjust = 1,size = 3) + 
+          annotate("text", y = lower, x = Inf, label = paste0("Lower\n ", round(lower,5)),hjust = 1,size = 3) + 
+          annotate("text", y = upper, x = Inf, label = paste0("Upper\n", round(upper,5)),hjust = 1,size = 3) %>% print()
+        
+  
+        ggsave(file.path(paste0(dir.plot, "BA_plots_diff_plates/BA_",  c, ".pdf")), 
+               width = 8, height = 6) # This directory can change to other folders
+      }
+      
+      return(df)
+    },.parallel = T
+  )
+  
+  doParallel::stopImplicitCluster()
+
+  return(HOLA)
+}
+```
+
+# ICC compute
+
+```{r}
+reliable_cell_type <- create_rating(samples.id, cell_type, unit = "single", id = "cell_type")
+colnames(reliable_cell_type)[2] <- "ICC"
+reliable_cell_type
+```
+
+# HoLA
+
+```{r}
+reliable_cell_type <-get_replicate.HOLA(samples.id, cell_type, iccdat = reliable_cell_type)
+reliable_cell_type
+```
+
+
+# modified ICC
+
+```{r}
+reliable_cell_type$modified_ICC <- reliable_cell_type$ICC - reliable_cell_type$HoLA
+reliable_cell_type
+```
+
+```{r eval = F}
+write_csv(reliable_cell_type, file.path(dir.cell.type, "cell_type_ICC.csv"))
+```
+
+# Session information
+
+```{r}
+devtools::session_info()
+```
+
