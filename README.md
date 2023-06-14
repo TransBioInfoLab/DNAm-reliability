@@ -51,7 +51,7 @@ To compare the reliability of probes with different characteristics (e.g., type 
 
 | File                          | Link                                                         |
 | ----------------------------- | ------------------------------------------------------------ |
-| compare_test/compare_test.Rmd | [Link to the script](https://github.com/TransBioInfoLab/AD-ATN-biomarkers-and-DNAm/blob/main/code/compare_test/compare_test.Rmd) |
+| compare_test/compare_test.Rmd | [Link to the script](https://github.com/TransBioInfoLab/DNAm-reliability/blob/main/code/compare_test/compare_test.Rmd) |
 
 
 
@@ -59,7 +59,7 @@ To compare the reliability of probes with different characteristics (e.g., type 
 
 | File                                               | Link                                                         |
 | -------------------------------------------------- | ------------------------------------------------------------ |
-| results/ADNI_ICC_annotation_with_HoLA_grouped.xlsx | [Link to the result](https://github.com/TransBioInfoLab/AD-ATN-biomarkers-and-DNAm/blob/main/results/ADNI_ICC_annotation_with_HoLA_grouped.xlsx) |
+| results/ADNI_ICC_annotation_with_HoLA_grouped.xlsx | [Link to the result](https://github.com/TransBioInfoLab/DNAm-reliability/blob/main/results/ADNI_ICC_annotation_with_HoLA_grouped.xlsx) |
 
 
 
