@@ -142,7 +142,7 @@ Data used in the preparation of this article were obtained from the Alzheimer’
 
 ## Reference
 
-1. Welsh H, Batalha C, Li W, Mpye KL, Souza-Pinto NC, Naslavsky MS, Parra EJ: **A systematic evaluation of normalization methods and probe replicability using infinium EPIC methylation data.** *Clin Epigenetics* 2023, **15:**41.
+1. Welsh H, Batalha C, Li W, Mpye KL, Souza-Pinto NC, Naslavsky MS, Parra EJ: **A systematic evaluation of normalization methods and probe replicability using infinium EPIC methylation data.** *Clin Epigenetics* 2023, **15:** 41.
 2. Sugden K, Hannon EJ, Arseneault L, Belsky DW, Corcoran DL, Fisher HL, Houts RM, Kandaswamy R, Moffitt TE, Poulton R, et al: **Patterns of Reliability: Assessing the Reproducibility and Integrity of DNA Methylation Measurement.** *Patterns (N Y)* 2020, **1**.
-3. Logue MW, Smith AK, Wolf EJ, Maniates H, Stone A, Schichman SA, McGlinchey RE, Milberg W, Miller MW: **The correlation of methylation levels measured using Illumina 450K and EPIC BeadChips in blood samples.** *Epigenomics* 2017, **9:**1363-1371.
-4. Bose M, Wu C, Pankow JS, Demerath EW, Bressler J, Fornage M, Grove ML, Mosley TH, Hicks C, North K, et al: **Evaluation of microarray-based DNA methylation measurement using technical replicates: the Atherosclerosis Risk In Communities (ARIC) Study.** *BMC Bioinformatics* 2014, **15:**312.
+3. Logue MW, Smith AK, Wolf EJ, Maniates H, Stone A, Schichman SA, McGlinchey RE, Milberg W, Miller MW: **The correlation of methylation levels measured using Illumina 450K and EPIC BeadChips in blood samples.** *Epigenomics* 2017, **9:** 1363-1371.
+4. Bose M, Wu C, Pankow JS, Demerath EW, Bressler J, Fornage M, Grove ML, Mosley TH, Hicks C, North K, et al: **Evaluation of microarray-based DNA methylation measurement using technical replicates: the Atherosclerosis Risk In Communities (ARIC) Study.** *BMC Bioinformatics* 2014, **15:** 312.
