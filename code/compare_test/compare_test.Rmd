@@ -325,53 +325,6 @@ writexl::write_xlsx(
 )
 ```
 
-### mICC vs CSF biomarkers
-
-
-```{r message = F}
-## Load regression results
-DX <- c("AD","CN")
-file.list.lm.names <- list.files(
-  path = file.path(dir.extra, "adjusted"),
-  pattern = paste0(DX, "_results",collapse = "|"),
-  full.names = T,
-  recursive = T
-)
-
-file.list.lm <- file.list.lm.names %>% purrr::map(~readr::read_csv(.))
-names(file.list.lm) <- unlist(
-  paste0(
-    "ADNI",
-    file.list.lm.names %>% purrr::map(~stringr::str_match(.,"_AD|_CN")),
-    file.list.lm.names %>% purrr::map(~stringr::str_extract(.,"_ABETA|_PTAU|_TAU"))
-  )
-)
-single.sig.cpgs <- file.list.lm %>% purrr::map(~filter(., pValue.bacon.z < 1e-05)) %>% 
-  data.table::rbindlist(.,idcol = "ID") %>% mutate(ID = gsub("ADNI_","",ID)) %>% 
-  separate(ID, into = c("Sample", "CSF"), sep = "_",  remove = T)
-```
-
-```{r}
-reliable_df$group_sig <- ifelse(reliable_df$cpg %in% single.sig.cpgs$cpg, "Yes", "No")
-p_sum <- reliable_df %>% dplyr::group_by(group_sig) %>% dplyr::summarise(n = dplyr::n())
-reliable_df$group_sig <- factor(reliable_df$group_sig, levels = c("Yes", "No"))
-```
-
-```{r}
-ICC_test_results <- model.fn(
-  data = reliable_df,
-  Type = "modified_ICC",
-  test_var = "group_sig",
-  model = "LMER"
-)
-writexl::write_xlsx(
-  ICC_test_results,
-  file.path(dir.results.test, "modified_ICC_vs_CSF_LMER_model_results.xlsx")
-)
-```
-
-
-
 ### mICC vs DMR
 
 ```{r}
