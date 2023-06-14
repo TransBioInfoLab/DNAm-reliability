@@ -24,7 +24,7 @@ We pre-processed the samples using the SeSAMe 2 pipeline described in Welsh et a
 
 ### 2. Distribution of the ICCs in EPIC-EPIC comparison 
 
-To study the ICCs for probes in our EPIC-EPIC comparison, we compared the distributions of the ICCs in our EPIC-EPIC comparison with results from Sugden et al. (2020) [2], Logue et al. (2017) [3], and Bose et al. (2014) [4]. 
+We studied both the magnitude and patterns of reliability in the EPIC-EPIC comparison, and compared the distributions of the ICCs in our EPIC-EPIC comparison with results from Sugden et al. (2020) [2], Logue et al. (2017) [3], and Bose et al. (2014) [4]. 
 
 | File                                        | Link                                                         |
 | ------------------------------------------- | ------------------------------------------------------------ |
@@ -34,7 +34,7 @@ To study the ICCs for probes in our EPIC-EPIC comparison, we compared the distri
 
 ### 3. Half-width of the 95% confidence Limits of Agreement (HoLA) and modified ICC
 
-To explicitly account for the amount of disagreement, we proposed to assess reliability using the modified ICC, which is defined as ICC – Half-width of 95% confidence Limits of Agreement (or HoLA). HoLA is calculated as $1.96\sigma_d$, where $\sigma_d$ is the standard deviation of the differences between the two duplicate measures. Moreover, we evaluated the impact of modified ICC on mQTL analysis, dementia studies, DNAm-to-gene expression correlations, and surrogate variables 
+To explicitly account for the amount of disagreement, we proposed to assess reliability using the modified ICC, which is defined as ICC – Half-width of 95% confidence Limits of Agreement (or HoLA). HoLA is calculated as $1.96\sigma_d$, where $\sigma_d$ is the standard deviation of the differences between the two duplicate measures. Moreover, we evaluated the impact of modified ICC on mQTL analysis, meta-analysis, DNAm-to-gene expression correlations, brain-blood correlations, and surrogate variables for cell type proportions.  
 
 | File                                                       | Link                                                         |
 | ---------------------------------------------------------- | ------------------------------------------------------------ |
