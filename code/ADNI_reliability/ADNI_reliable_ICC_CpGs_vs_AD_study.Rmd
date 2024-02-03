@@ -1,0 +1,401 @@
+---
+title: "Critical evaluation of the reliability of DNA methylation probes on the Illumina MethylationEPIC BeadChip microarrays for dementia research"
+subtitle: "ICC vs ADNI study results"
+author: "Wei Zhang, Lily Wang"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    highlight: pygments
+    theme: yeti
+    toc: true
+    number_sections: true
+    df_print: paged
+    code_download: false
+    toc_float:
+      collapsed: yes
+    toc_depth: 3
+    font_size: 10
+editor_options:
+  chunk_output_type: inline 
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggpubr)
+library(gmodels)
+
+dir.base <- "../../"
+dir.reliable.score <- file.path(dir.base, "analysis-results/reliable_score_different_plate")
+dir.plot <- file.path(dir.base, "analysis-results/plots")
+
+dir.mike <- file.path(dir.base, "Mike")
+dir.extra <- file.path(dir.base, "external_files")
+```
+
+# Demonstrate reliable CpGs are more consistent across studies
+
+```{r message = F}
+reliable_df <- read_csv(file.path(dir.reliable.score, "ADNI_icc_beta_and_M_results_ind_samples_annotated_different_plates.csv"))
+```
+
+## Sex-combined study
+
+```{r eval = F}
+### Load results
+adni.results <- read_csv(file.path(dir.extra, "meta_analysis_glm_fixed_effect_ADNI_and_AIBL_AD_vs_CN_single_cpg_annotated.csv"),
+                         show_col_types = FALSE)
+
+reliable_df <- inner_join(
+  reliable_df,
+  adni.results %>% dplyr::select(cpg, estimate.bacon, se.bacon, pVal.final.bacon, direction.bacon,
+                                 ADNI_AD_vs_CN_Estimate.bacon, ADNI_AD_vs_CN_pValue.bacon,
+                                 AIBL_AD_vs_CN_Estimate.bacon, AIBL_AD_vs_CN_pValue.bacon)
+)
+reliable_df$effect_size_diff <- 
+  abs(reliable_df$ADNI_AD_vs_CN_Estimate.bacon - reliable_df$AIBL_AD_vs_CN_Estimate.bacon)
+write_csv(
+  reliable_df,
+  file.path(dir.reliable.score, "ADNI_ICC_beta_and_M_results_ind_diff_plates_samples_annotated_with_ADNI_AIBL.csv")
+)
+```
+
+
+```{r message = F}
+reliable_df <- read_csv(
+  file.path(dir.reliable.score, "ADNI_ICC_beta_and_M_results_ind_diff_plates_samples_annotated_with_ADNI_AIBL.csv")
+)
+```
+
+```{r echo = F, fig.width=9, fig.height=8}
+ggscatter(
+  reliable_df,
+  y = "effect_size_diff",
+  x = "ICC_Beta",
+  ylab = "Effect size absolute differences between ADNI and AIBL",
+  xlab = "ICC",
+  size = .1,
+  cor.coef = T,
+  cor.method = "spearman"
+)
+```
+
+
+```{r  echo = F, fig.width=9, fig.height=8}
+ggboxplot(
+  data = reliable_df, 
+  x = "group",
+  y = "effect_size_diff",
+  ylab = "Effect size absolute differences between ADNI and AIBL",
+  xlab = "ICC and HoLA classification",
+  fill = "classification_Beta",
+  palette = "jco",
+  outlier.shape = NA,
+  ylim = c(0, 45)
+) 
+```
+
+```{r echo = F, fig.width=9, fig.height=8}
+ggboxplot(
+  data = reliable_df, 
+  x = "classification_Beta",
+  y = "effect_size_diff",
+  ylab = "Effect size absolute differences between ADNI and AIBL",
+  xlab = "ICC group",
+  fill = "classification_Beta",
+  palette = "jco",
+  outlier.shape = NA,
+  ylim = c(0, 45)
+) 
+```
+
+## Sex-specific study
+
+```{r message = F}
+reliable_df <- read_csv(file.path(dir.reliable.score, "ADNI_icc_beta_and_M_results_ind_samples_annotated_different_plates.csv"))
+```
+
+### Female
+
+```{r eval = F}
+female.results <- read_csv(
+  file.path(dir.reliable.score, "../effect_size/FEMALE_meta_analysis_glm_fixed_effect_ADNI_and_AIBL_AD_vs_CN_single_cpg_annotated.csv")
+)
+reliable_df <- inner_join(
+  reliable_df,
+  female.results %>% dplyr::select(cpg,  ADNI_FEMALE_Estimate.bacon, ADNI_FEMALE_pValue.bacon, AIBL_FEMALE_Estimate.bacon, AIBL_FEMALE_pValue.bacon)
+)
+reliable_df$effect_size_diff <- abs(
+  reliable_df$ADNI_FEMALE_Estimate.bacon - reliable_df$AIBL_FEMALE_Estimate.bacon)
+write_csv(
+  reliable_df,
+  file.path(dir.reliable.score, "FEMALE_ICC_beta_and_M_results_ind_diff_plates_samples_annotated_with_ADNI_AIBL.csv")
+)
+```
+
+
+
+```{r message = F}
+reliable_df <- read_csv(
+  file.path(dir.reliable.score, "FEMALE_ICC_beta_and_M_results_ind_diff_plates_samples_annotated_with_ADNI_AIBL.csv")
+)
+```
+
+```{r echo = F, fig.width=9, fig.height=8}
+ggscatter(
+  reliable_df,
+  y = "effect_size_diff",
+  x = "ICC_Beta",
+  ylab = "Female effect size abs differences between ADNI and AIBL",
+  xlab = "ICC",
+  size = .1,
+  cor.coef = T,
+  cor.method = "spearman"
+)
+```
+
+
+```{r echo = F, fig.width=9, fig.height=8}
+ggboxplot(
+  data = reliable_df, 
+  x = "classification_Beta",
+  y = "effect_size_diff",
+  ylab = "Female effect size absolute differences between ADNI and AIBL",
+  xlab = "ICC group",
+  fill = "classification_Beta",
+  palette = "jco",
+  outlier.shape = NA,
+  ylim = c(0, 1)
+) 
+```
+
+
+### Male
+
+```{r message = F}
+reliable_df <- read_csv(file.path(dir.reliable.score, "ADNI_ICC_annotation_with_HoLA_grouped.csv"))
+```
+
+
+```{r eval = F}
+male.results <- read_csv(
+  file.path(dir.reliable.score, "../effect_size/MALE_meta_analysis_glm_fixed_effect_ADNI_and_AIBL_AD_vs_CN_single_cpg_annotated.csv")
+)
+reliable_df <- inner_join(
+  reliable_df,
+  male.results %>% dplyr::select(cpg, 
+                                 ADNI_MALE_Estimate.bacon, ADNI_MALE_pValue.bacon,
+                                 AIBL_MALE_Estimate.bacon, AIBL_MALE_pValue.bacon)
+)
+reliable_df$effect_size_diff <- abs(
+  reliable_df$ADNI_MALE_Estimate.bacon - reliable_df$AIBL_MALE_Estimate.bacon)
+write_csv(
+  reliable_df,
+  file.path(dir.reliable.score, "MALE_ICC_beta_and_M_results_ind_diff_plates_samples_annotated_with_ADNI_AIBL.csv")
+)
+```
+
+
+```{r message = F}
+reliable_df <- read_csv(
+  file.path(dir.reliable.score, "MALE_ICC_beta_and_M_results_ind_diff_plates_samples_annotated_with_ADNI_AIBL.csv")
+)
+```
+
+```{r echo = F, fig.width=9, fig.height=8}
+ggscatter(
+  reliable_df,
+  y = "effect_size_diff",
+  x = "ICC_Beta",
+  ylab = "Male effect size abs differences between ADNI and AIBL",
+  xlab = "ICC",
+  size = .1,
+  cor.coef = T,
+  cor.method = "spearman"
+)
+```
+
+```{r}
+ggboxplot(
+  data = reliable_df, 
+  x = "classification_Beta",
+  y = "effect_size_diff",
+  ylab = "Male effect size absolute differences between ADNI and AIBL",
+  xlab = "ICC group",
+  fill = "classification_Beta",
+  palette = "jco",
+  outlier.shape = NA,
+  ylim = c(0, 1)
+) 
+```
+
+
+# Demonstrate reliable CpGs have methylation levels that are more consistent across brain and blood 
+
+```{r message = F}
+reliable_df <- read_csv(file.path(dir.reliable.score, "ADNI_icc_beta_and_M_results_ind_samples_annotated_different_plates.csv"))
+```
+
+```{r message = F}
+london.corr <- read_csv(
+  file.path(dir.extra, "London_blood_brain_correlation_cpgs.csv")
+)
+reliable_df <- inner_join(
+  reliable_df, london.corr
+)
+reliable_df <- reliable_df %>% mutate(
+  beta_spearman_cor_group = ifelse(
+  beta_spearman_cor < 0.4, "Low", ifelse(beta_spearman_cor < 0.75 & beta_spearman_cor > 0.4, "Medium", "High")),
+  residual_spearman_cor_group = ifelse(
+  residual_spearman_cor < 0.4, "Low", ifelse(residual_spearman_cor < 0.75 & residual_spearman_cor > 0.4, "Medium", "High")))
+```
+
+```{r eval= F,echo = F}
+write_csv(reliable_df, file.path(dir.reliable.score,
+                                 "ADNI_ICC_beta_and_M_results_ind_diff_plates_samples_annotated_with_ADNI_AIBL_brain_blood_corr.csv"))
+```
+
+```{r eval= F,echo = F}
+reliable_df <- read_csv( file.path(dir.reliable.score,
+                                   "ADNI_ICC_beta_and_M_results_ind_diff_plates_samples_annotated_with_ADNI_AIBL_brain_blood_corr.csv"))
+```
+
+
+## Beta correlation vs ICC and HoLA 
+
+```{r echo = F, fig.width=9, fig.height=8}
+ggscatter(
+  reliable_df,
+  y = "beta_spearman_cor",
+  x = "ICC_Beta",
+  xlab = "ICC",
+  ylab = "London Beta correlation",
+  size = .1,
+  cor.coef = T,
+  cor.method = "spearman"
+)
+```
+
+```{r echo = F, fig.width=9, fig.height=8}
+reliable_df$beta_spearman_cor_group <- factor(reliable_df$beta_spearman_cor_group, levels = c("Low", "Medium", "High"))
+p_sum <- reliable_df %>% dplyr::group_by(beta_spearman_cor_group) %>% dplyr::summarise(n = dplyr::n())
+ggboxplot(
+  reliable_df,
+  x = "beta_spearman_cor_group",
+  y = "ICC_Beta",
+  ylab = "ICC",
+  xlab = "brain-blood correlation of DNA methylation levels",
+  fill = "beta_spearman_cor_group",
+  palette = "jco",
+  #outlier.shape = NA
+) + guides(fill = "none")
+```
+
+```{r eval = F}
+ggsave(filename = file.path(dir.plot, "ADNI_ICC_with_brain_blood_corr_boxplot.pdf"),
+       width = 8, height = 5)
+```
+
+```{r warning = F, fig.width=9,fig.height=5, echo = F}
+ggboxplot(
+  data = reliable_df, 
+  x = "classification_Beta",
+  y = "beta_spearman_cor",
+  ylab = "London Beta correlation",
+  xlab = "ICC group",
+  fill = "classification_Beta",
+  palette = "jco",
+  outlier.shape = NA
+)
+```
+
+## Residuals correlation vs ICC
+
+```{r echo = F, fig.width=9, fig.height=8}
+ggscatter(
+  reliable_df,
+  y = "residual_spearman_cor",
+  x = "ICC_Beta",
+  xlab = "ICC",
+  ylab = "London residual correlation",
+  size = .1,
+  cor.coef = T,
+  cor.method = "spearman"
+)
+```
+
+```{r warning = F, fig.width=9,fig.height=5, echo = F}
+ggboxplot(
+  data = reliable_df, 
+  x = "classification_Beta",
+  y = "residual_spearman_cor",
+  ylab = "London residual correlation",
+  xlab = "ICC group",
+  fill = "classification_Beta",
+  palette = "jco",
+  outlier.shape = NA
+)
+```
+
+# Demenstrate that CpGs have higher probes reliability (mICC) are more likely located within DMRs 
+
+```{r message = F}
+DMR <- readxl::read_xlsx(file.path(dir.mike, "cpg_plus3.xlsx"))
+```
+
+## Combined sex analysis
+
+```{r warning = F, fig.width=9,fig.height=5, echo = F}
+ggboxplot(
+  data = DMR %>% mutate(located_in_combined = ifelse(located_in_combined == 1, "Yes", "No")), 
+  y = "ICC_Beta",
+  x = "located_in_combined",
+  ylab = "ICC",
+  xlab = "probes located within AD-associated DMRs",
+  fill = "located_in_combined",
+  palette = "jco",
+  outlier.shape = NA
+) + guides(fill = "none")
+ggsave(filename = file.path(dir.plot, "ADNI_ICC_with_combined_sex_DMR_analysis_boxplot.pdf"),
+       width = 8, height = 5)
+```
+
+## Female
+
+```{r warning = F, fig.width=9,fig.height=5, echo = F}
+ggboxplot(
+  data = DMR %>% mutate(located_in_females = ifelse(located_in_females == 1, "Yes", "No")), 
+  y = "ICC_Beta",
+  x = "located_in_females",
+  ylab = "ICC",
+  xlab = "probes located within AD-associated DMRs",
+  fill = "located_in_females",
+  palette = "jco",
+  outlier.shape = NA
+) + guides(fill = "none")
+ggsave(filename = file.path(dir.plot, "Female_ADNI_ICC_with_combined_sex_DMR_analysis_boxplot.pdf"),
+       width = 8, height = 5)
+```
+
+## Male
+
+```{r warning = F, fig.width=9,fig.height=5, echo = F}
+ggboxplot(
+  data = DMR %>% mutate(located_in_males = ifelse(located_in_males == 1, "Yes", "No")), 
+  y = "ICC_Beta",
+  x = "located_in_males",
+  ylab = "ICC",
+  xlab = "probes located within AD-associated DMRs",
+  fill = "located_in_males",
+  palette = "jco",
+  outlier.shape = NA
+) + guides(fill = "none")
+ggsave(filename = file.path(dir.plot, "Male_ADNI_ICC_with_combined_sex_DMR_analysis_boxplot.pdf"),
+       width = 8, height = 5)
+```
+
+# Session Information
+
+```{r}
+devtools::session_info()
+```

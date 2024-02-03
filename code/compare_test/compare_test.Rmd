@@ -41,6 +41,10 @@ dir.extra <- file.path(dir.base, "external_files")
 for(p in grep("dir",ls(),value = T)) dir.create(get(p),recursive = TRUE,showWarnings = FALSE)
 ```
 
+```{r}
+# Load auxilary function
+source("../Utility.R")
+```
 
 # Load results
 
@@ -51,9 +55,8 @@ beta.rep1 <- read_csv(
 ) %>% column_to_rownames("CpG")
 colnames(beta.rep1) <- gsub("X", "", colnames(beta.rep1))
 # Load reliable results
-reliable_df <- read_csv(file.path(dir.reliable.score, "ADNI_ICC_annotation_with_HoLA_grouped.csv"))
+reliable_df <- read_csv(file.path(dir.reliable.score, "ADNI_icc_beta_and_M_results_ind_samples_annotated_different_plates.csv"))
 ```
-
 
 # Identify co-methylated clusters using first replicate
 
@@ -103,7 +106,7 @@ reliable_df_with_region2$cluster[is.na(reliable_df_with_region2$cluster)] <- 0
 # ------------------------------------------------------------------------------------------------------------
 write_csv(
   reliable_df_with_region2,
-  file.path(dir.reliable.score, "ADNI_ICC_annotation_with_HoLA_grouped_and_region_cluster.csv")
+  file.path(dir.reliable.score, "ADNI_ICC_annotation_with_region_cluster.csv")
 )
 ```
 
@@ -111,55 +114,15 @@ write_csv(
 
 ```{r message = F}
 reliable_df_with_region2 <- read_csv(
-  file.path(dir.reliable.score, "ADNI_ICC_annotation_with_HoLA_grouped_and_region_cluster.csv")
+  file.path(dir.reliable.score, "ADNI_ICC_annotation_with_region_cluster.csv")
 )
 reliable_df_with_region2 <- reliable_df_with_region2 %>% separate(col = "UCSC_RefGene_Name", into = "Gene", sep = ";", remove = F)
 reliable_df_with_region2$Gene[is.na(reliable_df_with_region2$Gene)] <- "none"
 ```
 
-```{r}
-# ------------------------------------------------------------------------------------------------------------
-# Anxilary results
-# ------------------------------------------------------------------------------------------------------------
-model.fn <- function(data, Type = "ICC_Beta", test_var = NULL, model = "GEE", method = "del.eff"){
-  
-  data[[test_var]] <- factor(data[[test_var]])
-  
-  if(model == "GEE"){
-    
-    formu <- formula(paste(Type, "~ -1 + ", test_var))
-    results <- geeglm(
-      formu, 
-      data = data,
-      id = cluster,
-      corstr = "exchangeable"
-    )
-    
-  }
-  
-  if(model == "LMER"){
-    
-    formu <- formula(paste(Type, "~ -1 +", test_var, "+ (1 | cluster) + (1 | Gene) + (1 | seqnames)"))
-    results <- lmer(
-      formu, 
-      data = data
-    )
-
-    
-  }
-  
-    e <- emmeans(results, specs = test_var)
-    c_df <- data.frame(Type = Type, contrast(e, type = "average", method = method))   # method = "del.eff"
-    c_df$contrast <- gsub(" effect","",c_df$contrast)
-    c_df$df <- nrow(data)
-    c_df$p.t <- 2 * (1 - pt(abs(c_df$z.ratio), c_df$df))
-  
-  return(c_df)
-  
-}
-```
-
 ## ICC
+
+### ICC vs other properties
 
 ```{r eval = F}
 test_v <- c("Relation_to_Island", "RefGene_Group", "Probe_Type")
@@ -180,9 +143,6 @@ writexl::write_xlsx(
   file.path(dir.results.test, "ICC_vs_groups_LMER_model_results.xlsx")
 )
 ```
-
-
-## modified ICC
 
 ```{r eval = F}
 # Test on mean group and sd group
@@ -211,7 +171,7 @@ ICC_test_results <- plyr::llply(
   .fun = function(t){
     
     model.fn(data = reliable_df_with_region2, 
-             Type = "modified_ICC", 
+             Type = "ICC_Beta", 
              test_var = t, 
              model = "LMER")
     
@@ -221,26 +181,26 @@ names(ICC_test_results) <- test_v
 
 writexl::write_xlsx(
   ICC_test_results,
-  file.path(dir.results.test, "modified_ICC_vs_groups_LMER_model_results.xlsx")
+  file.path(dir.results.test, "ICC_vs_groups_LMER_model_results.xlsx")
 )
 ```
 
-### mICC vs mQTLs
+### ICC vs mQTLs
 
 ```{r}
 ICC_test_results <- model.fn(
   data = reliable_df_with_region2,
-  Type = "modified_ICC",
+  Type = "ICC_Beta",
   test_var = "mqtl",
   model = "LMER"
 )
 writexl::write_xlsx(
   ICC_test_results,
-  file.path(dir.results.test, "modified_ICC_vs_mQTLs_LMER_model_results.xlsx")
+  file.path(dir.results.test, "ICC_vs_mQTLs_LMER_model_results.xlsx")
 )
 ```
 
-### mICC vs ADNI studies
+### ICC vs ADNI studies
 
 ```{r}
 ICC_test_results <- list()
@@ -258,7 +218,7 @@ reliable_df <- left_join(reliable_df, (reliable_df_with_region2 %>% dplyr::selec
 ICC_test_results[[1]] <- model.fn(
   data = reliable_df,
   Type = "effect_size_diff",
-  test_var = "m_ICCgroup",
+  test_var = "classification_Beta",
   model = "LMER"
 )
 ```
@@ -274,7 +234,7 @@ reliable_df <- left_join(reliable_df, (reliable_df_with_region2 %>% dplyr::selec
 ICC_test_results[[2]] <- model.fn(
   data = reliable_df,
   Type = "effect_size_diff",
-  test_var = "m_ICCgroup",
+  test_var = "classification_Beta",
   model = "LMER"
 )
 ```
@@ -290,24 +250,24 @@ reliable_df <- left_join(reliable_df, (reliable_df_with_region2 %>% dplyr::selec
 ICC_test_results[[3]] <- model.fn(
   data = reliable_df,
   Type = "effect_size_diff",
-  test_var = "m_ICCgroup",
+  test_var = "classification_Beta",
   model = "LMER"
 )
 ```
 
 ```{r}
-names(ICC_test_results) <- c("mICC_vs_combined_sex", "mICC_vs_female", "mICC_vs_male")
+names(ICC_test_results) <- c("ICC_vs_combined_sex", "ICC_vs_female", "ICC_vs_male")
 writexl::write_xlsx(
   ICC_test_results,
-  file.path(dir.results.test, "modified_ICC_vs_ADNI_study_LMER_model_results.xlsx")
+  file.path(dir.results.test, "ICC_vs_ADNI_study_LMER_model_results.xlsx")
 )
 ```
 
-### mICC vs brain blood correlation
-
+### ICC vs brain blood correlation
 
 ```{r}
-reliable_df <- read_csv( file.path(dir.reliable.score,"ADNI_ICC_beta_and_M_results_ind_diff_plates_samples_annotated_with_ADNI_AIBL_brain_blood_corr.csv"))
+reliable_df <- read_csv( file.path(dir.reliable.score,
+                                   "ADNI_ICC_beta_and_M_results_ind_diff_plates_samples_annotated_with_ADNI_AIBL_brain_blood_corr.csv"))
 reliable_df <- left_join(reliable_df, (reliable_df_with_region2 %>% dplyr::select(cpg, cluster, Gene)))
 reliable_df$beta_spearman_cor_group <- factor(reliable_df$beta_spearman_cor_group, levels = c("Low", "Medium", "High"))
 ```
@@ -315,237 +275,17 @@ reliable_df$beta_spearman_cor_group <- factor(reliable_df$beta_spearman_cor_grou
 ```{r}
 ICC_test_results <- model.fn(
   data = reliable_df,
-  Type = "modified_ICC",
+  Type = "ICC_Beta",
   test_var = "beta_spearman_cor_group",
   model = "LMER"
 )
 writexl::write_xlsx(
   ICC_test_results,
-  file.path(dir.results.test, "modified_ICC_vs_brain_blood_correlation_LMER_model_results.xlsx")
-)
-```
-
-### mICC vs DMR
-
-```{r}
-ICC_test_results <- list()
-```
-
-
-```{r message = F}
-DMR <- readxl::read_xlsx(file.path(dir.mike, "cpg_plus3.xlsx"))
-reliable_df <- left_join(DMR, (reliable_df_with_region2 %>% dplyr::select(cpg, cluster, Gene)))
-reliable_df$located_in_combined <- ifelse(reliable_df$located_in_combined == 1, "Yes", "No")
-```
-
-```{r}
-ICC_test_results[[1]] <- model.fn(
-  data = reliable_df,
-  Type = "modified_ICC",
-  test_var = "located_in_combined",
-  model = "LMER"
+  file.path(dir.results.test, "ICC_vs_brain_blood_correlation_LMER_model_results.xlsx")
 )
 ```
 
 ```{r}
-reliable_df$located_in_females <- ifelse(reliable_df$located_in_females == 1, "Yes", "No")
-```
-
-```{r}
-ICC_test_results[[2]] <- model.fn(
-  data = reliable_df,
-  Type = "modified_ICC",
-  test_var = "located_in_females",
-  model = "LMER"
-)
-```
-
-```{r}
-reliable_df$located_in_males <- ifelse(reliable_df$located_in_males == 1, "Yes", "No")
-```
-
-```{r}
-ICC_test_results[[3]] <- model.fn(
-  data = reliable_df,
-  Type = "modified_ICC",
-  test_var = "located_in_males",
-  model = "LMER"
-)
-```
-
-```{r}
-names(ICC_test_results) <- c("Combined", "Female", "Male")
-writexl::write_xlsx(
-  ICC_test_results,
-  file.path(dir.results.test, "modified_ICC_vs_DMR_LMER_model_results.xlsx")
-)
-```
-
-
-### mICC vs DNAm RNA correlation
-
-```{r}
-ICC_test_results <- list()
-```
-
-
-```{r}
-# promoter
-reliable_df <- read_csv(file.path(dir.RNA_vs_DNAm,"Reliable_ADNI_cpg_Target_vs_DNAm_promoter_region.csv"))
-reliable_df <- left_join(reliable_df, reliable_df_with_region2 %>% dplyr::select(cpg, cluster, Gene))
-reliable_df <- reliable_df %>% 
-  mutate(sig = ifelse(p.val < 1e-05, "Yes", "No"))
-```
-
-```{r}
-ICC_test_results[[1]] <- model.fn(
-  data = reliable_df,
-  Type = "modified_ICC",
-  test_var = "sig",
-  model = "LMER"
-)
-```
-
-```{r}
-# distal
-reliable_df <- read_csv(file.path(dir.RNA_vs_DNAm,"Reliable_ADNI_cpg_Target_vs_DNAm_distal_region.csv"))
-reliable_df <- left_join(reliable_df, reliable_df_with_region2 %>% dplyr::select(cpg, cluster, Gene))
-reliable_df <- reliable_df %>% 
-  mutate(sig = ifelse(p.val < 1e-05, "Yes", "No"))
-```
-
-```{r}
-ICC_test_results[[2]] <- model.fn(
-  data = reliable_df,
-  Type = "modified_ICC",
-  test_var = "sig",
-  model = "LMER"
-)
-```
-
-```{r}
-names(ICC_test_results) <- c("mICC_vs_promoter", "mICC_vs_distal")
-```
-
-```{r}
-writexl::write_xlsx(
-  ICC_test_results,
-  file.path(dir.results.test, "modified_ICC_vs_DNAm_RNA_correlation_LMER_model_results.xlsx")
-)
-```
-
-## ICC vs other study
-
-```{r}
-# ------------------------------------------------------------------------------------------------------------
-# Anxilary results
-# ------------------------------------------------------------------------------------------------------------
-model.fn <- function(data, Type = "ICC_Beta", test_var = NULL, model = "LMER", method = "del.eff"){
-  
-  data[[test_var]] <- factor(data[[test_var]])
-  
-  if(model == "GEE"){
-    
-    formu <- formula(paste(Type, "~ -1 + ", test_var))
-    results <- geeglm(
-      formu, 
-      data = data,
-      id = cluster,
-      corstr = "exchangeable"
-    )
-    
-  }
-  
-  if(model == "LMER"){
-    
-    formu <- formula(paste(Type, "~ -1 +", test_var, "+ (1 | cluster) + (1 | Gene) + (1 | seqnames) + (1 | cpg)"))
-    results <- lmer(
-      formu, 
-      data = data
-    )
-
-    
-  }
-  
-    e <- emmeans(results, specs = test_var)
-    c_df <- data.frame(Type = Type, contrast(e, type = "average", method = method))   # method = "del.eff"
-    c_df$contrast <- gsub(" effect","",c_df$contrast)
-    c_df$df <- nrow(data)
-    c_df$p.t <- 2 * (1 - pt(abs(c_df$z.ratio), c_df$df))
-  
-  return(c_df)
-  
-}
-```
-
-### Sugden
-
-```{r}
-reliable_CpG_Sugden <- readxl::read_xlsx(
-  file.path(dir.data.supp, "1-s2.0-S2666389920300143-mmc2.xlsx"),
-  skip = 2
-) 
-colnames(reliable_CpG_Sugden)[1] <- "cpg"
-reliable_CpG_Sugden <- reliable_CpG_Sugden %>% dplyr::mutate(Sugden_classification = factor(ifelse(Reliability < 0.4, "Poor", 
-                                            ifelse(Reliability >= 0.4 & Reliability < 0.6, "Fair",
-                                                   ifelse(Reliability >= 0.6 & Reliability < 0.75, "Good", "Excellent"))),
-                                            levels = c("Poor", "Fair", "Good", "Excellent"))) 
-reliable_score.S <- inner_join(reliable_df_with_region2, reliable_CpG_Sugden) %>% 
-  dplyr::select(c("cpg", "ICC_Beta", "Reliability", "cluster", "Gene", "seqnames")) %>%
-  pivot_longer(
-    cols = c("ICC_Beta", "Reliability"),
-    names_to = "Study",
-    values_to = "ICC"
-) %>% mutate(Study = ifelse(Study == "ICC_Beta", "ADNI", "Sugden"))
-```
-
-```{r}
-ICC_test_results <- list()
-```
-
-```{r}
-ICC_test_results[[1]] <- model.fn(
-  reliable_score.S,
-  Type = "ICC",
-  test_var = "Study",
-  model = "LMER"
-)
-```
-
-### Bose
-
-```{r}
-reliable_CpG_Bose <- read_csv(
-  file.path(dir.data.supp, "Bose-ARIC-ICC-values.csv")
-) 
-colnames(reliable_CpG_Bose)[1] <- "cpg"
-reliable_CpG_Bose <- reliable_CpG_Bose %>% dplyr::select(cpg, `ICC value`) %>%
-  dplyr::mutate(Bose_classification = factor(ifelse(`ICC value` < 0.4, "Poor", 
-                                            ifelse(`ICC value` >= 0.4 & `ICC value` < 0.6, "Fair",
-                                                   ifelse(`ICC value` >= 0.6 & `ICC value` < 0.75, "Good", "Excellent"))),
-                                            levels = c("Poor", "Fair", "Good", "Excellent"))) 
-
-reliable_score.B <- inner_join(reliable_df_with_region2, reliable_CpG_Bose) %>% 
-  dplyr::select(c("cpg", "ICC_Beta", "ICC value", "cluster", "Gene", "seqnames")) %>%
-  pivot_longer(
-    cols = c("ICC_Beta", "ICC value"),
-    names_to = "Study",
-    values_to = "ICC"
-) %>% mutate(Study = ifelse(Study == "ICC_Beta", "ADNI", "Bose"))
-```
-
-
-```{r}
-ICC_test_results[[2]] <- model.fn(
-  reliable_score.B,
-  Type = "ICC",
-  test_var = "Study",
-  model = "LMER"
-)
-names(ICC_test_results) <- c("ICC_vs_Sugden", "ICC_vs_Bose")
-writexl::write_xlsx(
-  ICC_test_results,
-  file.path(dir.results.test, "ICC_vs_other_study_LMER_model_results.xlsx")
-)
+devtools::session_info()
 ```
 

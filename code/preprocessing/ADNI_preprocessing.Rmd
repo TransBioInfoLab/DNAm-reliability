@@ -37,8 +37,6 @@ dir.reliable.score <- file.path(dir.base, "/analysis-results/reliable_score_diff
 for(p in grep("dir",ls(),value = T)) dir.create(get(p),recursive = TRUE,showWarnings = FALSE)
 ```
 
-
-
 # Load data
 
 ```{r message = F}
@@ -361,83 +359,6 @@ write_csv(
 rm(beta.final)
 gc()
 ```
-
-
-# Calculate reliability
-
-
-```{r eval = F}
-beta <- readRDS( file.path(dir.data.new.processed,"ADNI_RnBeads_and_pooBAH_filtered_beta_different_plates.RDS"))
-samples.duplicated.all <- readxl::read_xlsx(
-  file.path(dir.data.new.processed, "ADNI_DNA_Methylation_Sample_Duplicated_IND.xlsx")
-)
-samples.duplicated.ind <- samples.duplicated.all %>% filter(RID %in% samples.diff.plate.slide$RID)
-samples.id <- samples.duplicated.ind %>% dplyr::select(RID_Phase_Edata, barcodes) %>% 
-  dplyr::group_by(RID_Phase_Edata) %>% 
-  dplyr::mutate(obs = dplyr::row_number()) %>% 
-  pivot_wider(names_from = "obs", 
-              values_from = "barcodes", 
-              names_prefix="barcodes")
-```
-
-```{r eval = F}
-## Auxillary function
-create_rating <- function(samples.id, beta, model = "twoway", type = "agreement", unit = "average", random = F, scale = F){
-  
-  barcodes <- samples.id[,c("barcodes1", "barcodes2")]
-  if(random){
-    sam <- sample.int(size = nrow(barcodes), n = 2, replace = T)
-    barcodes <- sapply(1:nrow(barcodes),  function(i) c(barcodes[i,sam[i]],barcodes[i,-sam[i]])) %>% t() 
-    rownames(barcodes) <- samples.id$RID_Phase_Edata
-  }
-
-  
-  doParallel::registerDoParallel(20)
-  rating_matrix <- plyr::adply(
-    beta,
-    .margins = 1,
-    .fun = function(probe){
-      rating <- plyr::aaply(
-        barcodes,
-        .margins = 1, 
-        .fun = function(bar){
-          probe[bar %>% unlist()]
-        },.expand = F
-      )
-      if(scale) rating <- scale(rating)
-      ic <- icc(rating, model = model, type = type, unit = unit)
-      data.frame(value = ic$value, r0 = ic$r0, Fvalue = ic$Fvalue,
-                 df1 = ic$df1, df2 = ic$df2, p.value = ic$p.value, 
-                 lbound = ic$lbound, ubound = ic$ubound)
-    },.parallel = T, .id = "cpg"
-  )
-  
-  return(rating_matrix)
-}
-```
-
-```{r eval = F}
-## Beta
-reliable_score_single <- create_rating(samples.id, beta, unit = "single")
-colnames(reliable_score_single)[1] <- "cpg"
-## M
-M <- minfi::logit2(beta)
-reliable_score_single.M <- create_rating(samples.id, M, unit = "single")
-colnames(reliable_score_single.M)[1] <- "cpg"
-```
-
-
-```{r eval = F}
-write_csv(
-  reliable_score_single %>% arrange(desc(value)),
-  file.path(dir.reliable.score, "ADNI_sesame_icc_results_ind_measure_single_different_plate.csv")
-)
-write_csv(
-  reliable_score_single.M %>% arrange(desc(value)),
-  file.path(dir.reliable.score, "ADNI_sesame_icc_results_ind_measure_single_M_values_different_plate.csv")
-)
-```
-
 
 # Session Information
 

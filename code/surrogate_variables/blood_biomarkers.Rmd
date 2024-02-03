@@ -1,0 +1,104 @@
+---
+title: "Critical evaluation of the reliability of DNA methylation probes on the Illumina MethylationEPIC BeadChip microarrays for dementia research"
+subtitle: "Blood biomarkers ICC"
+author: "Wei Zhang, Lily Wang"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    highlight: pygments
+    theme: yeti
+    toc: true
+    number_sections: true
+    df_print: paged
+    code_download: false
+    toc_float:
+      collapsed: yes
+    toc_depth: 3
+    font_size: 10
+editor_options:
+  chunk_output_type: inline
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+dir.data.new <- file.path(dir.base, "data/ADNI/")
+dir.raw.selected <-  file.path(dir.data.new, "/DNA_methylation/raw/")
+dir.RnBeads.selected <- file.path(dir.data.new, "/DNA_methylation/RnBeads/")
+dir.data.new.processed <- file.path(dir.data.new, "/DNA_methylation/processed/")
+dir.data.supp <- file.path(dir.base, "data/SuppFiles")
+```
+
+```{r}
+# Load auxilary function
+source("../Utility.R")
+```
+
+# Create beta list for two replicants
+
+```{r}
+beta <- readRDS( file.path(dir.data.new.processed,"ADNI_RnBeads_and_pooBAH_filtered_beta_different_plates.RDS"))
+samples.duplicated.ind <- readxl::read_xlsx(
+  file.path(dir.data.new.processed, "ADNI_DNA_Methylation_Sample_Duplicated_Diff_Plates.xlsx")
+)
+samples.id <- samples.duplicated.ind %>% dplyr::select(RID_Phase_Edata, barcodes) %>% 
+  dplyr::group_by(RID_Phase_Edata) %>% 
+  dplyr::mutate(obs = dplyr::row_number()) %>% 
+  pivot_wider(names_from = "obs", 
+              values_from = "barcodes", 
+              names_prefix="barcodes")
+```
+
+```{r}
+beta_list <- list(
+  beta[,match(samples.id$barcodes1, colnames(beta))],
+  beta[,match(samples.id$barcodes2, colnames(beta))]
+)
+```
+
+# Calculate scores based on biomarker weights
+
+```{r}
+biomarkers <- readxl::excel_sheets(file.path(dir.data.supp, "13059_2018_1514_MOESM1_ESM.xlsx"))
+biomarkers <- gsub(".*- ","",biomarkers)
+biomarker_list <- lapply(1:10, function(i){
+   readxl::read_xlsx(
+    file.path(dir.data.supp, "13059_2018_1514_MOESM1_ESM.xlsx"),
+    sheet = i)
+  }
+)
+names(biomarker_list) <- biomarkers
+biomarker_list <- biomarker_list[c(1,2,3,5,6,7,8)]
+names(biomarker_list)[7] <- "Total-to-HDL ratio"
+```
+
+```{r}
+biomarkers_scores <- plyr::ldply(
+  biomarker_list,
+  .fun = function(bio){
+    get_replicate_scores(beta_list, bio)
+  }, .id = "biomarkers"
+) 
+biomarkers_scores <- biomarkers_scores %>% column_to_rownames("biomarkers")
+biomarkers_scores <- as.matrix(biomarkers_scores)
+```
+
+# ICC 
+
+```{r}
+icc_biomarkers <- create_rating(samples.id, biomarkers_scores, unit = "single", id = "biomarkers")
+colnames(icc_biomarkers)[2] <- "ICC"
+icc_biomarkers
+```
+
+```{r}
+icc_biomarkers$biomarkers <- factor(icc_biomarkers$biomarkers, levels = rev(icc_biomarkers$biomarkers))
+ggplot(icc_biomarkers, aes(x = ICC, y = biomarkers)) +
+  geom_point(shape = 18, colour = "navy", fill = "navy", size = 3) +
+  geom_errorbarh(aes(xmin = lbound, xmax = ubound), height = .2, color = "grey50") +
+  labs(title = "Reliability of blood based biomarkers",
+       x = "ICC",
+       y = "") +
+  xlim(c(0.2,1)) + 
+  geom_vline(xintercept = 0.6, linetype = "dashed", color = "grey50") +
+  theme_classic()
+```

@@ -39,25 +39,9 @@ dir.lissette <- file.path(dir.base, "Lissette")
 for(p in grep("dir",ls(),value = T)) dir.create(get(p),recursive = TRUE,showWarnings = FALSE)
 ```
 
-```{r echo = F}
-# ---------------------------------------------------------------------------------------
-# Auxillary function
-# ---------------------------------------------------------------------------------------
-summ.table <- function(df, Group, type = "ICC_Beta"){
-
-  d <- df %>% group_by(get(Group)) %>% 
-  dplyr::summarise(
-    num_of_probes = n(),
-    Mean = mean(get(type), na.rm = T),
-    SD = sd(get(type), na.rm = T),
-    Min = min(get(type), na.rm = T),
-    Median = median(get(type), na.rm = T),
-    Max = max(get(type), na.rm = T)
-  ) 
-  colnames(d)[1] <- Group
-
-  return(d)  
-}
+```{r}
+# Load auxilary function
+source("../Utility.R")
 ```
 
 # ICC compute
