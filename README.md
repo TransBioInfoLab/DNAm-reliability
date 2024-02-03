@@ -120,12 +120,12 @@ Data used in the preparation of this article were obtained from the Alzheimer’
 
 ## Reference
 
-1. Welsh H, Batalha C, Li W, Mpye KL, Souza-Pinto NC, Naslavsky MS, Parra EJ: **A systematic evaluation of normalization methods and probe replicability using infinium EPIC methylation data.** *Clin Epigenetics* 2023, **15:** 41.
-2. Koo TK, Li MY: **A Guideline of Selecting and Reporting Intraclass Correlation Coefficients for Reliability Research.** *J Chiropr Med* 2016, **15:**155-163.
-3. Teschendorff AE, Breeze CE, Zheng SC, Beck S: **A comparison of reference-based algorithms for correcting cell-type heterogeneity in Epigenome-Wide Association Studies.** *BMC Bioinformatics* 2017, **18:**105.
-4. McCartney DL, Hillary RF, Stevenson AJ, Ritchie SJ, Walker RM, Zhang Q, Morris SW, Bermingham ML, Campbell A, Murray AD, et al: **Epigenetic prediction of complex traits and death.** *Genome Biol* 2018, **19:**136.
-5. Sugden K, Hannon EJ, Arseneault L, Belsky DW, Corcoran DL, Fisher HL, Houts RM, Kandaswamy R, Moffitt TE, Poulton R, et al: **Patterns of Reliability: Assessing the Reproducibility and Integrity of DNA Methylation Measurement.** *Patterns (N Y)* 2020, **1**.
-6. Logue MW, Smith AK, Wolf EJ, Maniates H, Stone A, Schichman SA, McGlinchey RE, Milberg W, Miller MW: **The correlation of methylation levels measured using Illumina 450K and EPIC BeadChips in blood samples.** *Epigenomics* 2017, **9:**1363-1371.
-7. Bose M, Wu C, Pankow JS, Demerath EW, Bressler J, Fornage M, Grove ML, Mosley TH, Hicks C, North K, et al: **Evaluation of microarray-based DNA methylation measurement using technical replicates: the Atherosclerosis Risk In Communities (ARIC) Study.** *BMC Bioinformatics* 2014, **15:**312.
-8. T CS, Young JI, Zhang L, Gomez L, Schmidt MA, Varma A, Chen XS, Martin ER, Wang L: **Cross-tissue analysis of blood and brain epigenome-wide association studies in Alzheimer's disease.** *Nat Commun* 2022, **13:**4852.
-9. T CS, Zhang W, Young JI, Gomez L, Schmidt MA, Varma A, Chen XS, Martin ER, Wang L: **Distinct sex-specific DNA methylation differences in Alzheimer's disease.** *Alzheimers Res Ther* 2022, **14:**133.
+1. Welsh H, Batalha C, Li W, Mpye KL, Souza-Pinto NC, Naslavsky MS, Parra EJ: **A systematic evaluation of normalization methods and probe replicability using infinium EPIC methylation data.** *Clin Epigenetics* 2023, **15:**41.
+2. Koo TK, Li MY: **A Guideline of Selecting and Reporting Intraclass Correlation Coefficients for Reliability Research.** *J Chiropr Med* 2016, **15**:155-163.
+3. Teschendorff AE, Breeze CE, Zheng SC, Beck S: **A comparison of reference-based algorithms for correcting cell-type heterogeneity in Epigenome-Wide Association Studies.** *BMC Bioinformatics* 2017, **18**:105.
+4. McCartney DL, Hillary RF, Stevenson AJ, Ritchie SJ, Walker RM, Zhang Q, Morris SW, Bermingham ML, Campbell A, Murray AD, et al: **Epigenetic prediction of complex traits and death.** *Genome Biol* 2018, **19**:136.
+5. Sugden K, Hannon EJ, Arseneault L, Belsky DW, Corcoran DL, Fisher HL, Houts RM, Kandaswamy R, Moffitt TE, Poulton R, et al: **Patterns of Reliability: Assessing the Reproducibility and Integrity of DNA Methylation Measurement.** *Patterns (N Y)* 2020,**1**.
+6. Logue MW, Smith AK, Wolf EJ, Maniates H, Stone A, Schichman SA, McGlinchey RE, Milberg W, Miller MW: **The correlation of methylation levels measured using Illumina 450K and EPIC BeadChips in blood samples.** *Epigenomics* 2017, **9**:1363-1371.
+7. Bose M, Wu C, Pankow JS, Demerath EW, Bressler J, Fornage M, Grove ML, Mosley TH, Hicks C, North K, et al: **Evaluation of microarray-based DNA methylation measurement using technical replicates: the Atherosclerosis Risk In Communities (ARIC) Study.** *BMC Bioinformatics* 2014, **15**:312.
+8. T CS, Young JI, Zhang L, Gomez L, Schmidt MA, Varma A, Chen XS, Martin ER, Wang L: **Cross-tissue analysis of blood and brain epigenome-wide association studies in Alzheimer's disease.** *Nat Commun* 2022, **13**:4852.
+9. T CS, Zhang W, Young JI, Gomez L, Schmidt MA, Varma A, Chen XS, Martin ER, Wang L: **Distinct sex-specific DNA methylation differences in Alzheimer's disease.** *Alzheimers Res Ther* 2022, **14**:133.
