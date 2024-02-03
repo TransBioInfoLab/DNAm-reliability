@@ -37,7 +37,7 @@ To study the ICCs for probes in our EPIC-EPIC comparison, we compared the distri
 
 To compare the reliability of probes with different characteristics (e.g., type I probes vs. type II probes), we performed mixed effects model analyses.
 
-| File                                                         | Description                                                  |
+| File and folder                                                       | Description                                                  |
 | ------------------------------------------------------------ | ------------------------------------------------------------ |
 | [code/compare_test](https://github.com/TransBioInfoLab/DNAm-reliability/blob/main/code/compare_test) | Mixed-effects model analyses for reliability of probes and different characteristics |
 
