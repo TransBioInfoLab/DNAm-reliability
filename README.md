@@ -43,7 +43,7 @@ To compare the reliability of probes with different characteristics (e.g., type 
 
 ## For reproducible research
 
-To perform the analysis, begin by installing the packages found in `session_info.R` ([Link to the script](https://github.com/TransBioInfoLab/DNAm-reliability/blob/main/code/session_info.R)). Then, load the auxiliary functions from `Utility.R` ([Link to the script](https://github.com/TransBioInfoLab/DNAm-reliability/blob/main/code/session_info.R)). Follow the sequence provided in the Description to conduct the analysis.
+To perform the analysis, begin by installing the packages found in `session_info.R` ([Link to the script](https://github.com/TransBioInfoLab/DNAm-reliability/blob/main/code/session_info.R)). Then, load the auxiliary functions from `Utility.R` ([Link to the script](https://github.com/TransBioInfoLab/DNAm-reliability/blob/main/code/Utility.R)). Follow the sequence provided in the Description to conduct the analysis.
 
 The following R packages are required:
 
