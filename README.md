@@ -120,7 +120,7 @@ Data used in the preparation of this article were obtained from the Alzheimer’
 
 ## Reference
 
-1. Welsh H, Batalha C, Li W, Mpye KL, Souza-Pinto NC, Naslavsky MS, Parra EJ: **A systematic evaluation of normalization methods and probe replicability using infinium EPIC methylation data.** *Clin Epigenetics* 2023, **15:**41.
+1. Welsh H, Batalha C, Li W, Mpye KL, Souza-Pinto NC, Naslavsky MS, Parra EJ: **A systematic evaluation of normalization methods and probe replicability using infinium EPIC methylation data.** *Clin Epigenetics* 2023, **15**:41.
 2. Koo TK, Li MY: **A Guideline of Selecting and Reporting Intraclass Correlation Coefficients for Reliability Research.** *J Chiropr Med* 2016, **15**:155-163.
 3. Teschendorff AE, Breeze CE, Zheng SC, Beck S: **A comparison of reference-based algorithms for correcting cell-type heterogeneity in Epigenome-Wide Association Studies.** *BMC Bioinformatics* 2017, **18**:105.
 4. McCartney DL, Hillary RF, Stevenson AJ, Ritchie SJ, Walker RM, Zhang Q, Morris SW, Bermingham ML, Campbell A, Murray AD, et al: **Epigenetic prediction of complex traits and death.** *Genome Biol* 2018, **19**:136.
