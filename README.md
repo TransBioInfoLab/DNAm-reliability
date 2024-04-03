@@ -1,7 +1,7 @@
 # **Critical evaluation of the reliability of DNA methylation probes on the Illumina MethylationEPIC v1.0 BeadChip microarrays** 
 Wei Zhang, Juan I. Young, Lissette Gomez, Michael A. Schmidt, David Lukacsovich, Achintya Varma, X. Steven Chen, Brian Kunkle, Eden R. Martin, Lily Wang
 
-### Reference
+### Cite this article
 Zhang, W., Young, J. I., Gomez, L., Schmidt, M. A., Lukacsovich, D., Varma, A., Chen, X. S., Kunkle, B., Martin, E. R., & Wang, L. (2024). Critical evaluation of the reliability of DNA methylation probes on the Illumina MethylationEPIC v1.0 BeadChip microarrays. *Epigenetics*, 19(1). https://doi.org/10.1080/15592294.2024.2333660
 
 ## Discription
